@@ -28,6 +28,7 @@ class APCAI_AI_Client {
             'model'       => $model,
             'messages'    => $messages,
             'temperature' => (float)$temperature,
+            'stream'      => false,
         ];
 
         $headers = [
@@ -49,7 +50,7 @@ class APCAI_AI_Client {
         }
 
         $code = wp_remote_retrieve_response_code($response);
-        $raw_body = wp_remote_retrieve_body($response);
+        $raw_body = trim(wp_remote_retrieve_body($response));
 
         if ($code < 200 || $code >= 300) {
             $err_data = json_decode($raw_body, true);
@@ -62,6 +63,30 @@ class APCAI_AI_Client {
                 $detail = substr($raw_body, 0, 300);
             }
             return new WP_Error('api_http_error', "API Error (HTTP $code) dari 9Router: $detail");
+        }
+
+        // Dukungan respons Server-Sent Events (SSE chunk data: { ... })
+        if (str_starts_with($raw_body, 'data:')) {
+            $lines = explode("\n", $raw_body);
+            $full_content = '';
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line) || $line === 'data: [DONE]') continue;
+                if (str_starts_with($line, 'data:')) {
+                    $json_str = trim(substr($line, 5));
+                    $chunk = json_decode($json_str, true);
+                    if (isset($chunk['choices'][0]['delta']['content'])) {
+                        $full_content .= $chunk['choices'][0]['delta']['content'];
+                    } elseif (isset($chunk['choices'][0]['text'])) {
+                        $full_content .= $chunk['choices'][0]['text'];
+                    } elseif (isset($chunk['choices'][0]['message']['content'])) {
+                        $full_content .= $chunk['choices'][0]['message']['content'];
+                    }
+                }
+            }
+            if (!empty($full_content)) {
+                return $full_content;
+            }
         }
 
         $json = json_decode($raw_body, true);
