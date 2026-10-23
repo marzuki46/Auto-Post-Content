@@ -88,6 +88,16 @@
                 <label>Brand Voice / Nada Bicara Penulisan</label>
                 <input type="text" name="brand_voice" class="apcai-input" value="<?php echo esc_attr($settings['brand_voice'] ?? ''); ?>" placeholder="Contoh: Informatif, ramah, otoritatif, persuasif">
             </div>
+
+            <div style="background:#f0fdf4;padding:16px;border-radius:6px;border:1px solid #bbf7d0;margin-top:15px;">
+                <label style="display:flex;align-items:center;gap:10px;font-weight:600;color:#166534;cursor:pointer;">
+                    <input type="checkbox" name="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>
+                    🖼️ Auto Download Bing Image, Kompresi & Convert ke WebP, plus Otomatis Isi Alt/Title/Desc SEO
+                </label>
+                <div class="apcai-help" style="margin-top:6px;color:#15803d;">
+                    Saat artikel dipublish (manual atau schedule otomatis), plugin akan otomatis mencari foto beresolusi tinggi di Bing Image berdasarkan topik/keyword, mengompres ukuran menjadi sangat ringan (&plusmn;40-80 KB) dalam format WebP tanpa mengurangi kualitas, melengkapi Alt Image & Caption SEO, lalu menjadikannya Featured Image (Thumbnail).
+                </div>
+            </div>
         </div>
 
         <!-- 4. Default Prompt & Call To Action (Persis CMS SEO) -->
