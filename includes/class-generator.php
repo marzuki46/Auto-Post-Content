@@ -4,6 +4,24 @@ defined('ABSPATH') || exit;
 class APCAI_Generator {
 
     /**
+     * Normalisasi Judul Bahasa Indonesia: Ganti kata 'Panduan' menjadi 'Cara'
+     */
+    public static function sanitize_indonesian_title(string $text): string {
+        $text = trim($text);
+        // Ganti "Panduan Lengkap Cara", "Panduan Cara" -> "Cara"
+        $text = preg_replace('/\bPanduan\s+(?:Lengkap\s+|Praktis\s+|Mudah\s+)?Cara\b/iu', 'Cara', $text);
+        // Ganti "Panduan Lengkap" -> "Cara Lengkap" atau "Cara"
+        $text = preg_replace('/\bPanduan\s+Lengkap\b/iu', 'Cara Lengkap', $text);
+        $text = preg_replace('/\bPanduan\s+Praktis\b/iu', 'Cara Praktis', $text);
+        $text = preg_replace('/\bPanduan\s+Mudah\b/iu', 'Cara Mudah', $text);
+        // Ganti kata "Panduan" mandiri menjadi "Cara"
+        $text = preg_replace('/\bPanduan\b/iu', 'Cara', $text);
+        // Hapus duplikasi kata "Cara Cara" jika ada
+        $text = preg_replace('/\bCara\s+Cara\b/iu', 'Cara', $text);
+        return trim(preg_replace('/\s+/', ' ', $text));
+    }
+
+    /**
      * Riset Topik Baru via AI dengan Tag Kategori & Funneling (TOFU / MOFU / BOFU)
      */
     public static function brainstorm_topics($count = 5, $category_id = 0, $funnel_filter = '') {
@@ -52,7 +70,7 @@ class APCAI_Generator {
         $funnel_instruction = "Distribusikan ide topik ke dalam piramida funneling pemasaran:
 - TOFU (Top of Funnel): Masalah awal, edukasi, definisi, cara, tips umum (Informational).
 - MOFU (Middle of Funnel): Perbandingan, review, studi kasus, alternatif, rekomendasi solusi terbaik (Commercial).
-- BOFU (Bottom of Funnel): Keputusan pembelian, harga, layanan, panduan implementasi langsung (Transactional).";
+- BOFU (Bottom of Funnel): Keputusan pembelian, harga, layanan, cara implementasi langsung (Transactional).";
 
         if (!empty($funnel_filter)) {
             $funnel_instruction = "Hanya fokus buat ide topik pada tahap: " . strtoupper($funnel_filter);
@@ -73,8 +91,9 @@ Artikel yang sudah ada di kategori ini (JANGAN ulangi):
 ATURAN FORMAT JUDUL:
 1. BATAS PANJANG: Wajib 45 - 65 karakter (maksimal 70 karakter).
 2. Dilarang kata-kata klise AI ('Menyelami', 'Mengupas Tuntas', 'Rombak UI', 'Mesin Konversi', titik dua panjang).
-3. Primary keyword natural.
-4. Tentukan nilai 'funnel_stage' secara presisi: 'tofu', 'mofu', atau 'bofu'.
+3. ATURAN KATA 'CARA' (KHUSUS BAHASA INDONESIA): Dilarang menggunakan kata 'Panduan' (seperti 'Panduan Lengkap', 'Panduan Memulai', 'Panduan Praktis'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...', 'Cara Memilih...').
+4. Primary keyword natural.
+5. Tentukan nilai 'funnel_stage' secara presisi: 'tofu', 'mofu', atau 'bofu'.
 
 Balas HANYA dengan JSON array valid tanpa teks pengantar:
 [{\"title\": \"string\", \"primary_keyword\": \"string\", \"intent\": \"string\", \"funnel_stage\": \"tofu|mofu|bofu\", \"angle\": \"string\"}]";
@@ -100,6 +119,9 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
         foreach ($parsed as $item) {
             if (empty($item['title'])) continue;
             $title = sanitize_text_field($item['title']);
+            if ($target_lang === 'Bahasa Indonesia') {
+                $title = self::sanitize_indonesian_title($title);
+            }
             $keyword = sanitize_text_field($item['primary_keyword'] ?? '');
             $intent = sanitize_text_field($item['intent'] ?? 'informational');
             $funnel = strtolower(sanitize_text_field($item['funnel_stage'] ?? 'tofu'));
@@ -260,6 +282,7 @@ ATURAN WAJIB PENULISAN ALAMI (ANTI-AI PATTERN):
 4. RITME KALIMAT ALAMI: Variasikan panjang kalimat (kombinasi kalimat pendek, sedang, dan lugas). Hindari kalimat majemuk berbelit-belit yang membosankan. Tulis dengan nada bicara praktisi berpengalaman yang ramah dan solutif.
 5. JANGAN SPAM BOLDING: Hindari menebalkan (**bold**) kata kunci secara berlebihan di setiap paragraf. Bolding hanya dipakai untuk 1-2 poin yang benar-benar krusial.
 6. KONTEN BERBOBOT: Berikan contoh konkret di lapangan, perbandingan pro-kontra, tips praktis yang bisa langsung dipraktekkan, serta data atau analogi yang masuk akal.
+7. GUNAKAN KATA 'CARA' (BUKAN 'PANDUAN'): Dalam pembuatan konten bahasa Indonesia, JANGAN gunakan kata 'Panduan' (seperti 'Panduan Lengkap...', 'Panduan Memulai...', 'Panduan Praktis...'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...'). Audiens Indonesia mencari di Google dengan kata 'Cara'.
 
 ATURAN STRUKTUR JSON:
 Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown wrapper dengan struktur:
@@ -300,6 +323,21 @@ PANDUAN PENGEMBANGAN KONTEN:
         $parsed = APCAI_AI_Client::extract_json($raw);
         if (is_wp_error($parsed)) {
             return $parsed;
+        }
+
+        // Normalisasi kata 'Panduan' menjadi 'Cara' untuk konten Bahasa Indonesia
+        if ($lang_name === 'Bahasa Indonesia' && is_array($parsed)) {
+            if (!empty($parsed['title'])) {
+                $parsed['title'] = self::sanitize_indonesian_title($parsed['title']);
+            }
+            if (!empty($parsed['seo_title'])) {
+                $parsed['seo_title'] = self::sanitize_indonesian_title($parsed['seo_title']);
+            }
+            if (!empty($parsed['content_md'])) {
+                $parsed['content_md'] = preg_replace('/^(#{1,4})\s*Panduan\s+(?:Lengkap\s+|Praktis\s+|Mudah\s+)?Cara\b/imu', '$1 Cara', $parsed['content_md']);
+                $parsed['content_md'] = preg_replace('/^(#{1,4})\s*Panduan\s+(?:Lengkap|Praktis|Mudah|Pemula|Terbaru)?\s*/imu', '$1 Cara ', $parsed['content_md']);
+                $parsed['content_md'] = preg_replace('/^(#{1,4})\s*Panduan\b/imu', '$1 Cara', $parsed['content_md']);
+            }
         }
 
         return $parsed;
@@ -372,6 +410,11 @@ CONTENT (MARKDOWN):
 
         // 2. Ganti heading "Kesimpulan" atau "Penutup" klise menjadi lebih berorientasi aksi nyata
         $md = preg_replace('/^(#{2,4})\s*(?:Kesimpulan|Penutup)\b/im', '$1 Langkah Praktis Selanjutnya', $md);
+
+        // 3. Normalisasi kata "Panduan" pada heading menjadi "Cara"
+        $md = preg_replace('/^(#{1,4})\s*Panduan\s+(?:Lengkap\s+|Praktis\s+|Mudah\s+)?Cara\b/imu', '$1 Cara', $md);
+        $md = preg_replace('/^(#{1,4})\s*Panduan\s+(?:Lengkap|Praktis|Mudah|Pemula|Terbaru)?\s*/imu', '$1 Cara ', $md);
+        $md = preg_replace('/^(#{1,4})\s*Panduan\b/imu', '$1 Cara', $md);
 
         $lines = explode("\n", $md);
         $html = '';
@@ -461,6 +504,9 @@ CONTENT (MARKDOWN):
         }
 
         $title = sanitize_text_field($data['title'] ?? 'Untitled Article');
+        if ($language === 'id') {
+            $title = self::sanitize_indonesian_title($title);
+        }
         $slug  = sanitize_title($data['slug'] ?? $title);
         $raw_md = $data['content_md'] ?? '';
         $html_content = self::markdown_to_html($raw_md);
@@ -488,6 +534,11 @@ CONTENT (MARKDOWN):
         $word_count = str_word_count(strip_tags($html_content));
         $kw_json = is_array($data['keywords'] ?? null) ? wp_json_encode($data['keywords']) : ($data['keywords'] ?? '');
 
+        $seo_title = sanitize_text_field($data['seo_title'] ?? $title);
+        if ($language === 'id') {
+            $seo_title = self::sanitize_indonesian_title($seo_title);
+        }
+
         // Simpan ke tabel relasi terpisah
         $wpdb->insert($table_rel, [
             'post_id'         => $post_id,
@@ -496,7 +547,7 @@ CONTENT (MARKDOWN):
             'translation_of'  => $translation_of,
             'language'        => $language,
             'topic_id'        => $topic_id,
-            'seo_title'       => sanitize_text_field($data['seo_title'] ?? $title),
+            'seo_title'       => $seo_title,
             'seo_description' => sanitize_text_field($data['seo_description'] ?? $excerpt),
             'keywords'        => $kw_json,
             'word_count'      => $word_count,
@@ -507,9 +558,9 @@ CONTENT (MARKDOWN):
         update_post_meta($post_id, '_apcai_language', $language);
         update_post_meta($post_id, '_apcai_funnel_stage', $funnel_stage);
         update_post_meta($post_id, '_apcai_translation_of', $translation_of);
-        if (!empty($data['seo_title'])) {
-            update_post_meta($post_id, '_yoast_wpseo_title', $data['seo_title']);
-            update_post_meta($post_id, 'rank_math_title', $data['seo_title']);
+        if (!empty($seo_title)) {
+            update_post_meta($post_id, '_yoast_wpseo_title', $seo_title);
+            update_post_meta($post_id, 'rank_math_title', $seo_title);
         }
         if (!empty($data['seo_description'])) {
             update_post_meta($post_id, '_yoast_wpseo_metadesc', $data['seo_description']);
