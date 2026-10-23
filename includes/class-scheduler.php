@@ -141,13 +141,13 @@ class APCAI_Scheduler {
         $table_topics = APCAI_DB::table_topics();
         $table_logs   = APCAI_DB::table_logs();
 
-        // 1. Tentukan Kategori Prioritas / Rotasi Kategori
+        // 1. Tentukan Kategori & Funnel Prioritas
         $categories = get_categories(['hide_empty' => false]);
         $target_cat_id = 1;
         if (!empty($categories)) {
-            // Ambil kategori yang paling sedikit diposting hari ini (fair distribution)
             $cat_ids = wp_list_pluck($categories, 'term_id');
             $t_rel = APCAI_DB::table_posts_meta();
+            // Kategori dengan jumlah post paling sedikit
             $least_cat = $wpdb->get_row("SELECT category_id, COUNT(*) as cnt FROM $t_rel GROUP BY category_id ORDER BY cnt ASC LIMIT 1");
             if ($least_cat && in_array((int)$least_cat->category_id, $cat_ids)) {
                 $target_cat_id = (int)$least_cat->category_id;
@@ -156,22 +156,52 @@ class APCAI_Scheduler {
             }
         }
 
-        // 2. Ambil 1 topik 'idea' dari kategori tersebut
+        // Tentukan Funnel Stage yang paling minim kontennya (rotasi TOFU, MOFU, BOFU alami)
+        $t_rel = APCAI_DB::table_posts_meta();
+        $funnel_counts = $wpdb->get_results(
+            $wpdb->prepare("SELECT funnel_stage, COUNT(*) as cnt FROM $t_rel WHERE category_id = %d GROUP BY funnel_stage", $target_cat_id),
+            OBJECT_K
+        );
+        $funnel_stages = ['tofu', 'mofu', 'bofu'];
+        $target_funnel = 'tofu';
+        $min_count = 999999;
+        foreach ($funnel_stages as $stage) {
+            $cnt = isset($funnel_counts[$stage]) ? (int)$funnel_counts[$stage]->cnt : 0;
+            if ($cnt < $min_count) {
+                $min_count = $cnt;
+                $target_funnel = $stage;
+            }
+        }
+
+        // 2. Ambil 1 topik 'idea' dari kategori & funnel tersebut
         $topic = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $table_topics WHERE status = 'idea' AND category_id = %d ORDER BY id ASC LIMIT 1",
-            $target_cat_id
+            "SELECT * FROM $table_topics WHERE status = 'idea' AND category_id = %d AND funnel_stage = %s ORDER BY id ASC LIMIT 1",
+            $target_cat_id,
+            $target_funnel
         ));
 
-        // Jika tidak ada di kategori ini, ambil topik idea manapun yang tersedia
+        // Jika tidak ada di funnel itu, cari topik idea manapun di kategori target
+        if (!$topic) {
+            $topic = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $table_topics WHERE status = 'idea' AND category_id = %d ORDER BY id ASC LIMIT 1",
+                $target_cat_id
+            ));
+        }
+
+        // Jika tidak ada di kategori itu, ambil topik idea manapun yang tersisa di database
         if (!$topic) {
             $topic = $wpdb->get_row("SELECT * FROM $table_topics WHERE status = 'idea' ORDER BY id ASC LIMIT 1");
         }
 
-        // Kalau benar-benar habis, generate topik darurat
+        // Inisiatif Mandiri: Jika Bank Topik KOSONG, sistem otomatis riset topik baru sesuai Kategori & Funnel yang kurang!
         if (!$topic) {
-            $bs = APCAI_Generator::brainstorm_topics(3, $target_cat_id);
-            if (!is_wp_error($bs) && $bs['created'] > 0) {
-                $topic = $wpdb->get_row("SELECT * FROM $table_topics WHERE status = 'idea' ORDER BY id ASC LIMIT 1");
+            $research_count = max(3, min(20, (int)($settings['auto_research_count'] ?? 5)));
+            $bs = APCAI_Generator::brainstorm_topics($research_count, $target_cat_id, $target_funnel);
+            if (!is_wp_error($bs) && !empty($bs['created']) && $bs['created'] > 0) {
+                $topic = $wpdb->get_row($wpdb->prepare(
+                    "SELECT * FROM $table_topics WHERE status = 'idea' AND category_id = %d ORDER BY id DESC LIMIT 1",
+                    $target_cat_id
+                ));
             }
         }
 
@@ -179,7 +209,7 @@ class APCAI_Scheduler {
             $wpdb->insert($table_logs, [
                 'action_type' => 'scheduled_post',
                 'status'      => 'failed',
-                'message'     => 'Tidak ada topik tersedia di antrian untuk dieksekusi.',
+                'message'     => 'Bank topik kosong dan AI gagal meng-generate topik inisiatif mandiri.',
                 'created_at'  => current_time('mysql'),
             ]);
             return;
