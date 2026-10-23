@@ -181,12 +181,12 @@ class APCAI_Admin {
         check_ajax_referer('apcai_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
 
-        $models = APCAI_AI_Client::test_connection();
-        if (is_wp_error($models)) {
-            wp_send_json_error($models->get_error_message());
+        $res = APCAI_AI_Client::test_connection();
+        if (is_wp_error($res)) {
+            wp_send_json_error($res->get_error_message());
         }
 
-        wp_send_json_success(['models' => $models]);
+        wp_send_json_success($res);
     }
 
     public static function ajax_save_settings() {

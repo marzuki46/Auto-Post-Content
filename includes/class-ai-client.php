@@ -52,13 +52,30 @@ class APCAI_AI_Client {
         $raw_body = wp_remote_retrieve_body($response);
 
         if ($code < 200 || $code >= 300) {
-            $err_msg = "API Error (HTTP $code): " . substr($raw_body, 0, 300);
-            return new WP_Error('api_http_error', $err_msg);
+            $err_data = json_decode($raw_body, true);
+            $detail = '';
+            if (isset($err_data['error']['message'])) {
+                $detail = $err_data['error']['message'];
+            } elseif (isset($err_data['message'])) {
+                $detail = $err_data['message'];
+            } else {
+                $detail = substr($raw_body, 0, 300);
+            }
+            return new WP_Error('api_http_error', "API Error (HTTP $code) dari 9Router: $detail");
         }
 
         $json = json_decode($raw_body, true);
-        if (!$json || !isset($json['choices'][0]['message']['content'])) {
-            return new WP_Error('invalid_json', __('Respon AI tidak valid atau kosong.', 'auto-post-content'));
+        if (!$json) {
+            return new WP_Error('invalid_json', 'Format response 9Router tidak valid (bukan JSON): ' . substr($raw_body, 0, 200));
+        }
+
+        if (isset($json['error'])) {
+            $err_msg = is_array($json['error']) ? ($json['error']['message'] ?? wp_json_encode($json['error'])) : $json['error'];
+            return new WP_Error('api_error', "9Router Error: $err_msg");
+        }
+
+        if (!isset($json['choices'][0]['message']['content'])) {
+            return new WP_Error('invalid_json', 'Respon AI tidak memiliki atribut choices/content. Respon: ' . substr($raw_body, 0, 200));
         }
 
         return $json['choices'][0]['message']['content'];
@@ -134,11 +151,14 @@ class APCAI_AI_Client {
         }
 
         $code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+
         if ($code < 200 || $code >= 300) {
-            return new WP_Error('http_error', "Koneksi gagal dengan status HTTP $code");
+            $err_data = json_decode($body, true);
+            $msg = $err_data['error']['message'] ?? $err_data['message'] ?? substr($body, 0, 200);
+            return new WP_Error('http_error', "Koneksi gagal (HTTP $code): $msg");
         }
 
-        $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
         $models = [];
         if (isset($data['data']) && is_array($data['data'])) {
@@ -149,6 +169,15 @@ class APCAI_AI_Client {
             }
         }
 
-        return $models;
+        // Test mini completion untuk memastikan API key dan model benar-benar bisa generate teks
+        $writer_model = $settings['model_writer'] ?? 'openai/gpt-4o';
+        $test_chat = self::chat('', 'Balas satu kata saja: OK', $writer_model, 0.1);
+        $chat_reply = is_wp_error($test_chat) ? ('Peringatan Model Chat: ' . $test_chat->get_error_message()) : trim($test_chat);
+
+        return [
+            'models' => $models,
+            'reply'  => $chat_reply,
+            'count'  => count($models),
+        ];
     }
 }

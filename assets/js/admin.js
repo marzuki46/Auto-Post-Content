@@ -55,8 +55,10 @@ jQuery(document).ready(function ($) {
             nonce: nonce
         }, function (res) {
             $btn.html('🔌 Test Koneksi 9Router').prop('disabled', false);
-            if (res.success) {
-                showNotice('✅ Terhubung! ' + res.data.models.length + ' Model AI terdeteksi.', 'success');
+            if (res.success && res.data) {
+                const count = res.data.count || 0;
+                const reply = res.data.reply ? ' | Test Chat: "' + res.data.reply + '"' : '';
+                showNotice('✅ Terhubung! ' + count + ' Model AI terdeteksi' + reply, 'success');
             } else {
                 showNotice('❌ ' + (res.data || 'Gagal tersambung.'), 'error');
             }
