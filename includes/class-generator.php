@@ -88,12 +88,9 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
             return $raw_response;
         }
 
-        $parsed = APCAI_AI_Client::extract_json($raw_response);
-        if (is_wp_error($parsed)) {
-            return $parsed;
-        }
-        if (!is_array($parsed)) {
-            return new WP_Error('parse_failed', 'Respon AI bukan berupa daftar JSON array.');
+        $parsed = APCAI_AI_Client::extract_ideas($raw_response);
+        if (empty($parsed)) {
+            return new WP_Error('parse_failed', 'Gagal membaca format JSON topik dari AI. Respon AI: ' . substr($raw_response, 0, 200));
         }
 
         $created = 0;

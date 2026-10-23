@@ -81,9 +81,52 @@ class APCAI_AI_Client {
         return $json['choices'][0]['message']['content'];
     }
 
+    public static function extract_ideas($raw): array {
+        $s = trim($raw);
+        $s = preg_replace('/^```(?:json)?\s*/i', '', $s);
+        $s = preg_replace('/\s*```$/', '', $s);
+        $s = trim($s);
+
+        $parsed = json_decode($s, true);
+        if ($parsed === null) {
+            $start = false;
+            $start_arr = strpos($s, '[');
+            $start_obj = strpos($s, '{');
+            if ($start_arr !== false && ($start_obj === false || $start_arr < $start_obj)) {
+                $start = $start_arr;
+                $end = strrpos($s, ']');
+            } elseif ($start_obj !== false) {
+                $start = $start_obj;
+                $end = strrpos($s, '}');
+            }
+
+            if ($start !== false && !empty($end) && $end > $start) {
+                $slice = substr($s, $start, $end - $start + 1);
+                $slice = preg_replace('/,\s*([\]}])/m', '$1', $slice);
+                $parsed = json_decode($slice, true);
+            }
+        }
+
+        if (empty($parsed)) {
+            return [];
+        }
+
+        // Jika dibungkus dalam object { "topics": [...] } atau { "ideas": [...] }
+        if (isset($parsed['topics']) && is_array($parsed['topics'])) {
+            return $parsed['topics'];
+        }
+        if (isset($parsed['ideas']) && is_array($parsed['ideas'])) {
+            return $parsed['ideas'];
+        }
+        if (isset($parsed['data']) && is_array($parsed['data'])) {
+            return $parsed['data'];
+        }
+
+        return is_array($parsed) ? $parsed : [];
+    }
+
     public static function extract_json($raw) {
         $s = trim($raw);
-        // Hapus markdown triple backticks (```json ... ``` atau ``` ... ```)
         $s = preg_replace('/^```(?:json)?\s*/i', '', $s);
         $s = preg_replace('/\s*```$/', '', $s);
         $s = trim($s);
@@ -93,33 +136,26 @@ class APCAI_AI_Client {
             return $decoded;
         }
 
-        // Cari kurung siku terluar [ ... ] untuk list/array
-        $start_arr = strpos($s, '[');
-        $end_arr   = strrpos($s, ']');
-        if ($start_arr !== false && $end_arr !== false && $end_arr > $start_arr) {
-            $slice = substr($s, $start_arr, $end_arr - $start_arr + 1);
-            $decoded = json_decode($slice, true);
-            if ($decoded !== null) {
-                return $decoded;
-            }
-        }
-
-        // Cari kurung kurawal terluar { ... } untuk object tunggal
         $start_obj = strpos($s, '{');
         $end_obj   = strrpos($s, '}');
         if ($start_obj !== false && $end_obj !== false && $end_obj > $start_obj) {
             $slice = substr($s, $start_obj, $end_obj - $start_obj + 1);
+            $slice = preg_replace('/,\s*([\]}])/m', '$1', $slice);
             $decoded = json_decode($slice, true);
             if ($decoded !== null) {
                 return $decoded;
             }
         }
 
-        // Jika JSON memiliki trailing koma atau format tidak sempurna, coba sanitasi
-        $cleaned = preg_replace('/,\s*([\]}])/m', '$1', $s);
-        $decoded = json_decode($cleaned, true);
-        if ($decoded !== null) {
-            return $decoded;
+        $start_arr = strpos($s, '[');
+        $end_arr   = strrpos($s, ']');
+        if ($start_arr !== false && $end_arr !== false && $end_arr > $start_arr) {
+            $slice = substr($s, $start_arr, $end_arr - $start_arr + 1);
+            $slice = preg_replace('/,\s*([\]}])/m', '$1', $slice);
+            $decoded = json_decode($slice, true);
+            if ($decoded !== null) {
+                return $decoded;
+            }
         }
 
         $snippet = substr($raw, 0, 200);
