@@ -29,8 +29,6 @@ class APCAI_Updater {
         $settings = get_option('apcai_settings', []);
         $token = !empty($settings['github_token']) ? trim($settings['github_token']) : '';
 
-        $url = "https://api.github.com/repos/{$this->repo}/releases/latest";
-
         $headers = [
             'Accept'     => 'application/vnd.github.v3+json',
             'User-Agent' => 'WordPress/' . get_bloginfo('version') . '; ' . home_url(),
@@ -39,22 +37,41 @@ class APCAI_Updater {
             $headers['Authorization'] = 'Bearer ' . $token;
         }
 
-        $response = wp_remote_get($url, [
+        // 1. Coba ambil dari GitHub Releases (/releases/latest)
+        $url_release = "https://api.github.com/repos/{$this->repo}/releases/latest";
+        $response = wp_remote_get($url_release, [
             'headers' => $headers,
             'timeout' => 15,
         ]);
 
-        if (is_wp_error($response)) {
-            return null;
+        if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+            $body = json_decode(wp_remote_retrieve_body($response), true);
+            if (is_array($body) && !empty($body['tag_name'])) {
+                return $body;
+            }
         }
 
-        $code = wp_remote_retrieve_response_code($response);
-        if ($code !== 200) {
-            return null;
+        // 2. Fallback: Jika belum ada formal Release (hanya Git Tag biasa), ambil dari /tags
+        $url_tags = "https://api.github.com/repos/{$this->repo}/tags";
+        $response_tags = wp_remote_get($url_tags, [
+            'headers' => $headers,
+            'timeout' => 15,
+        ]);
+
+        if (!is_wp_error($response_tags) && wp_remote_retrieve_response_code($response_tags) === 200) {
+            $tags = json_decode(wp_remote_retrieve_body($response_tags), true);
+            if (is_array($tags) && !empty($tags[0]['name'])) {
+                $latest_tag = $tags[0];
+                return [
+                    'tag_name'    => $latest_tag['name'],
+                    'zipball_url' => $latest_tag['zipball_url'] ?? "https://github.com/{$this->repo}/archive/refs/tags/{$latest_tag['name']}.zip",
+                    'html_url'    => "https://github.com/{$this->repo}/releases/tag/{$latest_tag['name']}",
+                    'body'        => 'Pembaruan versi dari git tag ' . $latest_tag['name'],
+                ];
+            }
         }
 
-        $body = json_decode(wp_remote_retrieve_body($response), true);
-        return is_array($body) ? $body : null;
+        return null;
     }
 
     public function check_update($transient) {
@@ -156,17 +173,47 @@ class APCAI_Updater {
 
     public static function force_check_update(): array {
         delete_site_transient('update_plugins');
-        wp_update_plugins();
-        $transient = get_site_transient('update_plugins');
 
+        $settings = get_option('apcai_settings', []);
+        $repo = !empty($settings['github_repo']) ? trim($settings['github_repo']) : 'marzuki46/Auto-Post-Content';
+        $updater = new self(APCAI_PLUGIN_FILE, $repo);
+        $release = $updater->get_github_release();
+
+        if (!$release || empty($release['tag_name'])) {
+            return [
+                'has_update'  => false,
+                'current'     => APCAI_VERSION,
+                'new_version' => APCAI_VERSION,
+                'message'     => 'Tidak dapat menemukan rilis atau tag di repository GitHub (' . esc_html($repo) . ').',
+            ];
+        }
+
+        $new_version = ltrim($release['tag_name'], 'vV');
         $slug = plugin_basename(APCAI_PLUGIN_FILE);
-        if (!empty($transient->response[$slug])) {
-            $item = $transient->response[$slug];
+
+        if (version_compare(APCAI_VERSION, $new_version, '<')) {
+            $transient = get_site_transient('update_plugins');
+            if (!is_object($transient)) {
+                $transient = new stdClass();
+            }
+
+            $obj = new stdClass();
+            $obj->slug = dirname($slug);
+            $obj->plugin = $slug;
+            $obj->new_version = $new_version;
+            $obj->url = $release['html_url'] ?? "https://github.com/{$repo}";
+            $obj->package = $release['zipball_url'] ?? '';
+            $obj->tested = '6.7';
+            $obj->requires_php = '8.3';
+
+            $transient->response[$slug] = $obj;
+            set_site_transient('update_plugins', $transient);
+
             return [
                 'has_update'  => true,
-                'new_version' => $item->new_version,
+                'new_version' => $new_version,
                 'current'     => APCAI_VERSION,
-                'package'     => $item->package,
+                'package'     => $obj->package,
                 'update_url'  => wp_nonce_url(self_admin_url('update.php?action=upgrade-plugin&plugin=' . urlencode($slug)), 'upgrade-plugin_' . $slug),
             ];
         }
@@ -174,8 +221,8 @@ class APCAI_Updater {
         return [
             'has_update'  => false,
             'current'     => APCAI_VERSION,
-            'new_version' => APCAI_VERSION,
-            'message'     => 'Plugin sudah memakai versi terbaru.',
+            'new_version' => $new_version,
+            'message'     => 'Plugin sudah memakai versi terbaru (v' . APCAI_VERSION . ').',
         ];
     }
 }
