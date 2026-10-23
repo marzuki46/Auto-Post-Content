@@ -249,18 +249,27 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
         $cat_obj = get_category($category_id);
         $cat_name = $cat_obj ? $cat_obj->name : 'General';
 
-        $system_prompt = "Anda adalah seorang Master SEO Content Strategist & Senior Conversion Copywriter.
-Kembangkan topik dari pengguna menjadi artikel blog SEO mendalam dan komprehensif.
+        $system_prompt = "Anda adalah seorang Jurnalis Senior, Praktisi Industri, dan Master SEO Copywriter.
+Tugas Anda: Mengembangkan topik menjadi artikel blog yang mendalam, berbobot, dan 100% TERASA ALAMI SEPERTI DITULIS MANUSIA ASLI (BEBAS DARI POLA & KLISE ROBOT AI).
 Kategori: {$cat_name} | Tahap Funnel: " . strtoupper($funnel_stage) . " | Bahasa: {$lang_name}.
-ATURAN OUTPUT:
-Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown block dengan struktur:
+
+ATURAN WAJIB PENULISAN ALAMI (ANTI-AI PATTERN):
+1. DILARANG KERAS PEMBUKA KLISE: Jangan pernah memulai artikel dengan frasa klise robot seperti: 'Di era digital yang serba cepat...', 'Dalam dunia yang terus berkembang...', 'Tidak dapat dipungkiri bahwa...', 'Apakah Anda sedang mencari...', atau 'Dalam artikel ini kita akan membahas...'. Mulai langsung dengan fakta nyata, studi kasus, keresahan riil di lapangan, atau sudut pandang tajam tanpa basa-basi.
+2. DILARANG SUB-JUDUL 'KESIMPULAN': Jangan pernah membuat heading berjudul 'Kesimpulan' atau 'Penutup', dan hindari frasa klise 'Sebagai kesimpulan...', 'Dapat disimpulkan bahwa...', 'Demikianlah pembahasan...'. Gantilah dengan sub-judul penutup yang kontekstual dan berisi rekomendasi langkah aksi nyata (Actionable Next Steps).
+3. HINDARI GARIS MENDATAR: JANGAN gunakan garis pemisah horizontal seperti '---', '***', atau '___' di antara bagian artikel. Transisi antar bagian harus mengalir alami lewat teks dan sub-judul.
+4. RITME KALIMAT ALAMI: Variasikan panjang kalimat (kombinasi kalimat pendek, sedang, dan lugas). Hindari kalimat majemuk berbelit-belit yang membosankan. Tulis dengan nada bicara praktisi berpengalaman yang ramah dan solutif.
+5. JANGAN SPAM BOLDING: Hindari menebalkan (**bold**) kata kunci secara berlebihan di setiap paragraf. Bolding hanya dipakai untuk 1-2 poin yang benar-benar krusial.
+6. KONTEN BERBOBOT: Berikan contoh konkret di lapangan, perbandingan pro-kontra, tips praktis yang bisa langsung dipraktekkan, serta data atau analogi yang masuk akal.
+
+ATURAN STRUKTUR JSON:
+Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown wrapper dengan struktur:
 {
-  \"title\": \"Judul artikel yang menarik klik (Click-worthy & SEO optimized)\",
-  \"seo_title\": \"Title tag untuk Google (maks 60 karakter)\",
+  \"title\": \"Judul artikel menarik, bernas, dan SEO-optimized\",
+  \"seo_title\": \"Title tag Google (maks 60 karakter)\",
   \"seo_description\": \"Meta deskripsi persuasif (maks 155 karakter)\",
-  \"excerpt\": \"Ringkasan artikel 2-3 kalimat\",
+  \"excerpt\": \"Ringkasan artikel 2-3 kalimat tajam\",
   \"keywords\": [\"keyword 1\", \"keyword 2\", \"keyword 3\", \"keyword 4\", \"keyword 5\"],
-  \"content_md\": \"Isi lengkap artikel dalam format Markdown (mulai langsung dari ## Sub-judul atau paragraf intro, tanpa judul # H1 terpisah), bullet points, link internal natural, CTA link yang rapi...\"
+  \"content_md\": \"Isi lengkap artikel dalam format Markdown murni (mulai langsung dari paragraf intro atau ## Sub-judul pertama, tanpa H1 # judul, tanpa garis horizontal ---, mengalir alami dengan poin-poin praktis, link internal natural, dan tombol CTA)...\"
 }";
 
         $user_prompt = "INPUT AWAL DARI PENGGUNA (TOPIK / PARAGRAF):
@@ -304,12 +313,15 @@ PANDUAN PENGEMBANGAN KONTEN:
 
         $system_prompt = "You are an elite bilingual SEO Content Strategist and Native English Tech/Business Copywriter.
 Translate and adapt the user's article into native, engaging, high-ranking ENGLISH content for a global audience.
-Strictly adhere to system guidelines:
-1. Native English Adaptation: Do not perform a literal word-for-word translation. Adapt the tone to be fluent, authoritative, and natural American/International English.
-2. Heading Structure: Do NOT output a leading # Title in content_md (the template renders canonical H1). Start directly with intro or ## First Heading. Keep all sub-headings (##, ###), bullet lists, tables, and internal markdown links intact.
-3. Call-To-Action (CTA): Adapt any Call-To-Action links or buttons into natural English.
-4. Concise Keyword-Focused Slug: Provide a short URL slug (strictly 3 to 5 core English words, maximum 45 characters, no stop words, URL safe).
-5. Output Format: Return ONLY a valid JSON object matching this schema without preamble:
+STRICT HUMAN-LIKE & ANTI-AI WRITING GUIDELINES:
+1. No AI Clichés: Never start with 'In today's fast-paced digital world...', 'In the modern landscape...', 'It is no secret that...', or 'In this article, we delve into...'. Start directly with compelling industry context, relatable real-world friction, or actionable insights.
+2. No 'Conclusion' heading: Do not use generic headings like 'Conclusion' or phrases like 'In conclusion...', 'To summarize...'. Use a contextual takeaway or action-oriented heading.
+3. No Horizontal Divider Lines: Do NOT insert horizontal lines like '---', '***', or '___' between sections.
+4. Natural Sentence Rhythm: Vary sentence length and structure. Write with the tone of an experienced professional practitioner—crisp, authoritative, clear, and engaging. Avoid keyword-bolding spam.
+5. Heading Structure: Do NOT output a leading # Title in content_md (the template renders canonical H1). Start directly with intro or ## First Heading. Keep all sub-headings (##, ###), bullet lists, tables, and internal markdown links intact.
+6. Call-To-Action (CTA): Adapt any Call-To-Action links or buttons into natural English.
+7. Concise Keyword-Focused Slug: Provide a short URL slug (strictly 3 to 5 core English words, maximum 45 characters, no stop words, URL safe).
+8. Output Format: Return ONLY a valid JSON object matching this schema without preamble:
 {
   \"title\": \"Compelling English Click-Worthy & SEO Title\",
   \"slug\": \"short-core-keyword-slug\",
@@ -317,7 +329,7 @@ Strictly adhere to system guidelines:
   \"seo_description\": \"Compelling meta description (max 155 chars)\",
   \"excerpt\": \"English summary in 2-3 sentences\",
   \"keywords\": [\"keyword 1\", \"keyword 2\", \"keyword 3\", \"keyword 4\"],
-  \"content_md\": \"Full translated English article in Markdown...\"
+  \"content_md\": \"Full translated English article in Markdown without horizontal lines...\"
 }";
 
         $kw_str = is_array($id_keywords) ? implode(", ", $id_keywords) : (string)$id_keywords;
@@ -351,9 +363,16 @@ CONTENT (MARKDOWN):
     }
 
     /**
-     * Konversi Markdown ke HTML ramah WordPress Gutenberg / Classic
+     * Konversi Markdown ke HTML ramah WordPress Gutenberg / Classic (Bebas Garis Mendatar)
      */
     public static function markdown_to_html($md) {
+        // 1. Bersihkan garis mendatar (---, ***, ___, <hr>)
+        $md = preg_replace('/^\s*[-*_]{3,}\s*$/m', '', $md);
+        $md = preg_replace('/<hr\s*\/?>/i', '', $md);
+
+        // 2. Ganti heading "Kesimpulan" atau "Penutup" klise menjadi lebih berorientasi aksi nyata
+        $md = preg_replace('/^(#{2,4})\s*(?:Kesimpulan|Penutup)\b/im', '$1 Langkah Praktis Selanjutnya', $md);
+
         $lines = explode("\n", $md);
         $html = '';
         $in_list = false;
@@ -362,6 +381,15 @@ CONTENT (MARKDOWN):
             $trimmed = trim($line);
 
             if (empty($trimmed)) {
+                if ($in_list) {
+                    $html .= "</ul>\n";
+                    $in_list = false;
+                }
+                continue;
+            }
+
+            // Hapus jika masih ada sisa garis mendatar
+            if (preg_match('/^[-*_]{3,}$/', $trimmed) || preg_match('/^<hr\s*\/?>$/i', $trimmed)) {
                 if ($in_list) {
                     $html .= "</ul>\n";
                     $in_list = false;
@@ -399,6 +427,10 @@ CONTENT (MARKDOWN):
 
             // Paragraph
             $para_text = self::format_inline_markdown($trimmed);
+            // Hindari paragraf yang hanya berisi garis atau tanda strip
+            if ($para_text === '---' || $para_text === '***' || $para_text === '___') {
+                continue;
+            }
             $html .= "<p>{$para_text}</p>\n";
         }
 

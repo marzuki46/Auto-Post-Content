@@ -118,7 +118,7 @@ class APCAI_DB {
                 'lang_mode'           => 'dual',
                 'default_lang'        => 'id',
                 'keyword_prompt'      => "Ekstrak dan kembangkan kata kunci entitas SEO:\n1. Target kata kunci utama (Primary Keyword)\n2. 5-8 Entity keywords (LSI / semantic terms) yang relevan\n3. Klasifikasi search intent pengunjung",
-                'content_prompt'      => "Tulis artikel SEO mendalam, faktual, dan komprehensif (minimal 800-1200 kata).\n- Buat judul menarik (H1) yang mengundang klik\n- Struktur konten rapi dengan Sub-heading (H2, H3)\n- Sertakan poin-poin actionable, perbandingan, atau tips praktis\n- Sisipkan Call To Action (CTA) secara natural dan terarah agar pembaca mengambil tindakan\n- Bahasa mengalir, profesional, dan ramah pembaca\n- Optimasi kaidah Google Helpful Content & E-E-A-T",
+                'content_prompt'      => "Tulis artikel dengan gaya bahasa jurnalis atau praktisi profesional manusia (100% natural, bebas klise robot AI, minimal 800-1200 kata).\n- HINDARI pembuka klise seperti 'Di era digital yang serba cepat...'\n- HINDARI sub-judul 'Kesimpulan', ganti dengan langkah aksi praktis\n- JANGAN gunakan garis mendatar (---)\n- Sub-heading jelas (H2, H3) dengan studi kasus/contoh konkret\n- Sisipkan Call To Action (CTA) secara persuasif dan mengalir\n- Optimasi kaidah Google Helpful Content & E-E-A-T",
                 'cta_type'            => 'whatsapp',
                 'cta_text'            => 'Hubungi Kami via WhatsApp',
                 'cta_target'          => '',

@@ -128,6 +128,7 @@
             <div class="apcai-form-group">
                 <label>Template Prompt Pengembangan Konten Utama</label>
                 <textarea name="content_prompt" class="apcai-textarea" rows="5"><?php echo esc_textarea($settings['content_prompt'] ?? ''); ?></textarea>
+                <div class="apcai-help">Sistem telah dilengkapi filter bawaan untuk menghapus garis mendatar (---) dan melarang klise robotik ("Di era digital", "Kesimpulan", dll) agar tulisan 100% seperti buatan manusia.</div>
             </div>
 
             <div style="background:#f8fafc;padding:16px;border-radius:6px;border:1px solid #e2e8f0;">
