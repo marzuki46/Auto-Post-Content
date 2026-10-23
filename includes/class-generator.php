@@ -271,18 +271,24 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
         $cat_obj = get_category($category_id);
         $cat_name = $cat_obj ? $cat_obj->name : 'General';
 
-        $system_prompt = "Anda adalah seorang Jurnalis Senior, Praktisi Industri, dan Master SEO Copywriter.
-Tugas Anda: Mengembangkan topik menjadi artikel blog yang mendalam, berbobot, dan 100% TERASA ALAMI SEPERTI DITULIS MANUSIA ASLI (BEBAS DARI POLA & KLISE ROBOT AI).
-Kategori: {$cat_name} | Tahap Funnel: " . strtoupper($funnel_stage) . " | Bahasa: {$lang_name}.
+        $site_url = home_url();
+        $site_domain = wp_parse_url($site_url, PHP_URL_HOST);
 
-ATURAN WAJIB PENULISAN ALAMI (ANTI-AI PATTERN):
-1. DILARANG KERAS PEMBUKA KLISE: Jangan pernah memulai artikel dengan frasa klise robot seperti: 'Di era digital yang serba cepat...', 'Dalam dunia yang terus berkembang...', 'Tidak dapat dipungkiri bahwa...', 'Apakah Anda sedang mencari...', atau 'Dalam artikel ini kita akan membahas...'. Mulai langsung dengan fakta nyata, studi kasus, keresahan riil di lapangan, atau sudut pandang tajam tanpa basa-basi.
-2. DILARANG SUB-JUDUL 'KESIMPULAN': Jangan pernah membuat heading berjudul 'Kesimpulan' atau 'Penutup', dan hindari frasa klise 'Sebagai kesimpulan...', 'Dapat disimpulkan bahwa...', 'Demikianlah pembahasan...'. Gantilah dengan sub-judul penutup yang kontekstual dan berisi rekomendasi langkah aksi nyata (Actionable Next Steps).
-3. HINDARI GARIS MENDATAR: JANGAN gunakan garis pemisah horizontal seperti '---', '***', atau '___' di antara bagian artikel. Transisi antar bagian harus mengalir alami lewat teks dan sub-judul.
-4. RITME KALIMAT ALAMI: Variasikan panjang kalimat (kombinasi kalimat pendek, sedang, dan lugas). Hindari kalimat majemuk berbelit-belit yang membosankan. Tulis dengan nada bicara praktisi berpengalaman yang ramah dan solutif.
-5. JANGAN SPAM BOLDING: Hindari menebalkan (**bold**) kata kunci secara berlebihan di setiap paragraf. Bolding hanya dipakai untuk 1-2 poin yang benar-benar krusial.
-6. KONTEN BERBOBOT: Berikan contoh konkret di lapangan, perbandingan pro-kontra, tips praktis yang bisa langsung dipraktekkan, serta data atau analogi yang masuk akal.
-7. GUNAKAN KATA 'CARA' (BUKAN 'PANDUAN'): Dalam pembuatan konten bahasa Indonesia, JANGAN gunakan kata 'Panduan' (seperti 'Panduan Lengkap...', 'Panduan Memulai...', 'Panduan Praktis...'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...'). Audiens Indonesia mencari di Google dengan kata 'Cara'.
+        $system_prompt = "Anda adalah seorang Jurnalis Senior, Praktisi Industri, dan Master SEO Copywriter.
+Tugas Anda: Mengembangkan topik dan data spesifik yang diinputkan pengguna menjadi artikel blog yang mendalam, berbobot, akurat, dan 100% TERASA ALAMI SEPERTI DITULIS MANUSIA ASLI (BEBAS DARI POLA & KLISE ROBOT AI).
+Kategori: {$cat_name} | Tahap Funnel: " . strtoupper($funnel_stage) . " | Bahasa: {$lang_name}.
+Domain Website Resmi: {$site_domain} ({$site_url}).
+
+ATURAN WAJIB PENULISAN ALAMI & KONTEN (ANTI-AI PATTERN):
+1. PATUHI & SERAP DATA INPUT PENGGUNA: Jika pengguna menginputkan data spesifik (tabel komparasi, nama tipe motor, rute lokal seperti Solo/Palang Joglo/Boyolali, pro/kontra, spesifikasi), Anda WAJIB membahas dan menyajikan data tersebut secara utuh dan mendalam ke dalam artikel. Jangan mengabaikan poin-poin yang sudah ditulis pengguna!
+2. FORMAT TABEL MARKDOWN: Jika ada data komparasi atau perbandingan, sajikan dalam tabel Markdown standar (| Kolom 1 | Kolom 2 |) yang valid agar otomatis ter-render rapi di website.
+3. DILARANG LINK FIKTIF / 'EXAMPLE.COM': JANGAN PERNAH membuat link fiktif seperti 'example.com', 'domainanda.com', atau link karangan sendiri. HANYA gunakan link resmi dari domain situs ini ({$site_url}) atau link WhatsApp resmi yang disediakan di instruksi. Jika tidak ada instruksi link, jangan buat link fiktif.
+4. DILARANG KERAS PEMBUKA KLISE: Jangan pernah memulai artikel dengan frasa klise robot seperti: 'Di era digital yang serba cepat...', 'Dalam dunia yang terus berkembang...', 'Tidak dapat dipungkiri bahwa...', 'Apakah Anda sedang mencari...', atau 'Dalam artikel ini kita akan membahas...'. Mulai langsung dengan fakta nyata, studi kasus, keresahan riil di lapangan, atau sudut pandang tajam tanpa basa-basi.
+5. DILARANG SUB-JUDUL 'KESIMPULAN': Jangan pernah membuat heading berjudul 'Kesimpulan' atau 'Penutup', dan hindari frasa klise 'Sebagai kesimpulan...', 'Dapat disimpulkan bahwa...', 'Demikianlah pembahasan...'. Gantilah dengan sub-judul penutup yang kontekstual dan berisi rekomendasi langkah aksi nyata (Actionable Next Steps).
+6. HINDARI GARIS MENDATAR: JANGAN gunakan garis pemisah horizontal seperti '---', '***', atau '___' di antara bagian artikel (kecuali di dalam sintaks baris pemisah tabel Markdown). Transisi antar bagian harus mengalir alami lewat teks dan sub-judul.
+7. RITME KALIMAT ALAMI: Variasikan panjang kalimat (kombinasi kalimat pendek, sedang, dan lugas). Hindari kalimat majemuk berbelit-belit yang membosankan. Tulis dengan nada bicara praktisi berpengalaman yang ramah dan solutif.
+8. JANGAN SPAM BOLDING: Hindari menebalkan (**bold**) kata kunci secara berlebihan di setiap paragraf. Bolding hanya dipakai untuk 1-2 poin yang benar-benar krusial.
+9. GUNAKAN KATA 'CARA' (BUKAN 'PANDUAN'): Dalam pembuatan konten bahasa Indonesia, JANGAN gunakan kata 'Panduan' (seperti 'Panduan Lengkap...', 'Panduan Memulai...', 'Panduan Praktis...'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...'). Audiens Indonesia mencari di Google dengan kata 'Cara'.
 
 ATURAN STRUKTUR JSON:
 Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown wrapper dengan struktur:
@@ -292,7 +298,7 @@ Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau ma
   \"seo_description\": \"Meta deskripsi persuasif (maks 155 karakter)\",
   \"excerpt\": \"Ringkasan artikel 2-3 kalimat tajam\",
   \"keywords\": [\"keyword 1\", \"keyword 2\", \"keyword 3\", \"keyword 4\", \"keyword 5\"],
-  \"content_md\": \"Isi lengkap artikel dalam format Markdown murni (mulai langsung dari paragraf intro atau ## Sub-judul pertama, tanpa H1 # judul, tanpa garis horizontal ---, mengalir alami dengan poin-poin praktis, link internal natural, dan tombol CTA)...\"
+  \"content_md\": \"Isi lengkap artikel dalam format Markdown murni (mulai langsung dari paragraf intro atau ## Sub-judul pertama, tanpa H1 # judul, menyerap data input pengguna, tanpa garis horizontal ---, mengalir alami dengan tabel/poin praktis, link internal resmi tanpa domain fiktif, dan tombol CTA)...\"
 }";
 
         $user_prompt = "INPUT AWAL DARI PENGGUNA (TOPIK / PARAGRAF):
@@ -338,6 +344,11 @@ PANDUAN PENGEMBANGAN KONTEN:
                 $parsed['content_md'] = preg_replace('/^(#{1,4})\s*Panduan\s+(?:Lengkap|Praktis|Mudah|Pemula|Terbaru)?\s*/imu', '$1 Cara ', $parsed['content_md']);
                 $parsed['content_md'] = preg_replace('/^(#{1,4})\s*Panduan\b/imu', '$1 Cara', $parsed['content_md']);
             }
+        }
+
+        // Hapus link fiktif example.com jika model tidak sengaja memunculkannya
+        if (is_array($parsed) && !empty($parsed['content_md'])) {
+            $parsed['content_md'] = preg_replace('/\[(.*?)\]\(https?:\/\/(?:www\.)?example\.com[^\)]*\)/i', '$1', $parsed['content_md']);
         }
 
         return $parsed;
@@ -395,23 +406,21 @@ CONTENT (MARKDOWN):
         // Strip leading # H1 if any
         if (isset($parsed['content_md'])) {
             $parsed['content_md'] = preg_replace('/^#\s+[^\n]+(?:\r?\n|$)/', '', trim($parsed['content_md']));
+            // Hapus link fiktif example.com
+            $parsed['content_md'] = preg_replace('/\[(.*?)\]\(https?:\/\/(?:www\.)?example\.com[^\)]*\)/i', '$1', $parsed['content_md']);
         }
 
         return $parsed;
     }
 
     /**
-     * Konversi Markdown ke HTML ramah WordPress Gutenberg / Classic (Bebas Garis Mendatar)
+     * Konversi Markdown ke HTML ramah WordPress Gutenberg / Classic (Termasuk Render Tabel & Bebas Garis Mendatar)
      */
     public static function markdown_to_html($md) {
-        // 1. Bersihkan garis mendatar (---, ***, ___, <hr>)
-        $md = preg_replace('/^\s*[-*_]{3,}\s*$/m', '', $md);
-        $md = preg_replace('/<hr\s*\/?>/i', '', $md);
-
-        // 2. Ganti heading "Kesimpulan" atau "Penutup" klise menjadi lebih berorientasi aksi nyata
+        // 1. Ganti heading "Kesimpulan" atau "Penutup" klise menjadi lebih berorientasi aksi nyata
         $md = preg_replace('/^(#{2,4})\s*(?:Kesimpulan|Penutup)\b/im', '$1 Langkah Praktis Selanjutnya', $md);
 
-        // 3. Normalisasi kata "Panduan" pada heading menjadi "Cara"
+        // 2. Normalisasi kata "Panduan" pada heading menjadi "Cara"
         $md = preg_replace('/^(#{1,4})\s*Panduan\s+(?:Lengkap\s+|Praktis\s+|Mudah\s+)?Cara\b/imu', '$1 Cara', $md);
         $md = preg_replace('/^(#{1,4})\s*Panduan\s+(?:Lengkap|Praktis|Mudah|Pemula|Terbaru)?\s*/imu', '$1 Cara ', $md);
         $md = preg_replace('/^(#{1,4})\s*Panduan\b/imu', '$1 Cara', $md);
@@ -419,9 +428,30 @@ CONTENT (MARKDOWN):
         $lines = explode("\n", $md);
         $html = '';
         $in_list = false;
+        $table_buffer = [];
+
+        $flush_table = function() use (&$html, &$table_buffer) {
+            if (!empty($table_buffer)) {
+                $html .= self::render_markdown_table($table_buffer);
+                $table_buffer = [];
+            }
+        };
 
         foreach ($lines as $line) {
             $trimmed = trim($line);
+
+            // Deteksi baris Markdown Table (| cell | cell |)
+            if (!empty($trimmed) && str_starts_with($trimmed, '|') && str_ends_with($trimmed, '|')) {
+                if ($in_list) {
+                    $html .= "</ul>\n";
+                    $in_list = false;
+                }
+                $table_buffer[] = $trimmed;
+                continue;
+            }
+
+            // Jika baris bukan bagian dari tabel, flush buffer tabel yang ada
+            $flush_table();
 
             if (empty($trimmed)) {
                 if ($in_list) {
@@ -431,7 +461,7 @@ CONTENT (MARKDOWN):
                 continue;
             }
 
-            // Hapus jika masih ada sisa garis mendatar
+            // Bersihkan garis mendatar (---, ***, ___, <hr>)
             if (preg_match('/^[-*_]{3,}$/', $trimmed) || preg_match('/^<hr\s*\/?>$/i', $trimmed)) {
                 if ($in_list) {
                     $html .= "</ul>\n";
@@ -470,16 +500,105 @@ CONTENT (MARKDOWN):
 
             // Paragraph
             $para_text = self::format_inline_markdown($trimmed);
-            // Hindari paragraf yang hanya berisi garis atau tanda strip
             if ($para_text === '---' || $para_text === '***' || $para_text === '___') {
                 continue;
             }
             $html .= "<p>{$para_text}</p>\n";
         }
 
+        $flush_table();
+
         if ($in_list) {
             $html .= "</ul>\n";
         }
+
+        return $html;
+    }
+
+    /**
+     * Render Buffer Baris Markdown Table Menjadi HTML <table> yang Rapi dan Responsif
+     */
+    private static function render_markdown_table(array $lines): string {
+        if (count($lines) < 2) {
+            // Bukan tabel utuh, cetak per paragraf biasa
+            $res = '';
+            foreach ($lines as $l) {
+                $res .= "<p>" . self::format_inline_markdown($l) . "</p>\n";
+            }
+            return $res;
+        }
+
+        $headers = [];
+        $alignments = [];
+        $rows = [];
+        $parsed_header = false;
+
+        foreach ($lines as $idx => $line) {
+            $line_content = trim($line, "|\t ");
+            $cols = array_map('trim', explode('|', $line_content));
+
+            // Cek apakah baris pemisah (misal: | :--- | :--- |)
+            $is_separator = true;
+            $current_aligns = [];
+            foreach ($cols as $col) {
+                if (preg_match('/^:?-+:?$/', $col)) {
+                    $align = 'left';
+                    if (str_starts_with($col, ':') && str_ends_with($col, ':')) {
+                        $align = 'center';
+                    } elseif (str_ends_with($col, ':')) {
+                        $align = 'right';
+                    }
+                    $current_aligns[] = $align;
+                } else {
+                    $is_separator = false;
+                    break;
+                }
+            }
+
+            if ($is_separator) {
+                $alignments = $current_aligns;
+                continue;
+            }
+
+            if (!$parsed_header) {
+                $headers = $cols;
+                $parsed_header = true;
+            } else {
+                $rows[] = $cols;
+            }
+        }
+
+        if (empty($headers)) {
+            return '';
+        }
+
+        $html = "<div class=\"apcai-table-responsive\" style=\"overflow-x:auto;margin:24px 0;\">\n";
+        $html .= "<table style=\"width:100%;border-collapse:collapse;margin:0;font-size:15px;line-height:1.6;border:1px solid #e2e8f0;\">\n";
+
+        // Render thead
+        $html .= "  <thead>\n    <tr style=\"background-color:#f8fafc;\">\n";
+        foreach ($headers as $i => $h) {
+            $align = $alignments[$i] ?? 'left';
+            $h_fmt = self::format_inline_markdown($h);
+            $html .= "      <th style=\"border:1px solid #cbd5e1;padding:12px 14px;text-align:{$align};font-weight:600;color:#1e293b;\">{$h_fmt}</th>\n";
+        }
+        $html .= "    </tr>\n  </thead>\n";
+
+        // Render tbody
+        $html .= "  <tbody>\n";
+        foreach ($rows as $r_idx => $row) {
+            $bg = ($r_idx % 2 === 1) ? 'background-color:#fdfdfd;' : 'background-color:#ffffff;';
+            $html .= "    <tr style=\"{$bg}\">\n";
+            foreach ($headers as $i => $h) {
+                $cell = $row[$i] ?? '';
+                $align = $alignments[$i] ?? 'left';
+                $cell_fmt = self::format_inline_markdown($cell);
+                $html .= "      <td style=\"border:1px solid #e2e8f0;padding:10px 14px;text-align:{$align};color:#334155;\">{$cell_fmt}</td>\n";
+            }
+            $html .= "    </tr>\n";
+        }
+        $html .= "  </tbody>\n";
+        $html .= "</table>\n</div>\n";
 
         return $html;
     }

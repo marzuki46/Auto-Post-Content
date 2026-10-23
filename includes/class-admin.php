@@ -267,7 +267,16 @@ class APCAI_Admin {
         check_ajax_referer('apcai_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
 
-        $topic = sanitize_text_field(wp_unslash($_POST['topic'] ?? ''));
+        // Cegah LiteSpeed Cache menyimpan respons dinamis AJAX
+        if (!headers_sent()) {
+            nocache_headers();
+            header('X-LiteSpeed-Cache-Control: no-cache');
+        }
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_control_set_nocache', 'APC AI Studio Ajax');
+        }
+
+        $topic = sanitize_textarea_field(wp_unslash($_POST['topic'] ?? ''));
         $category_id = absint($_POST['category_id'] ?? 1);
         $funnel_stage = sanitize_text_field(wp_unslash($_POST['funnel_stage'] ?? 'tofu'));
 
@@ -296,6 +305,14 @@ class APCAI_Admin {
         check_ajax_referer('apcai_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
 
+        if (!headers_sent()) {
+            nocache_headers();
+            header('X-LiteSpeed-Cache-Control: no-cache');
+        }
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_control_set_nocache', 'APC AI Translate Ajax');
+        }
+
         $title   = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
         $content = wp_unslash($_POST['content_md'] ?? '');
         $excerpt = sanitize_textarea_field(wp_unslash($_POST['excerpt'] ?? ''));
@@ -317,6 +334,14 @@ class APCAI_Admin {
         check_ajax_referer('apcai_admin_nonce', 'nonce');
         if (!current_user_can('publish_posts')) {
             wp_send_json_error('Unauthorized: insufficient permissions.');
+        }
+
+        if (!headers_sent()) {
+            nocache_headers();
+            header('X-LiteSpeed-Cache-Control: no-cache');
+        }
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_control_set_nocache', 'APC AI Publish Ajax');
         }
 
         $raw_id = $_POST['id_data'] ?? null;
