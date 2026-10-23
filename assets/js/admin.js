@@ -383,4 +383,71 @@ jQuery(document).ready(function ($) {
             showNotice('Error jaringan saat cek update.', 'error');
         });
     });
+
+    // Gallery Pool Upload Handling
+    $('#pool-file-input').on('change', function () {
+        const files = this.files;
+        if (!files || files.length === 0) return;
+
+        const formData = new FormData();
+        formData.append('action', 'apcai_upload_pool_images');
+        formData.append('nonce', nonce);
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files[]', files[i]);
+        }
+
+        const $status = $('#pool-upload-status');
+        $status.html('<span class="apcai-spinner"></span> Sedang mengompres ' + files.length + ' foto ke WebP... Harap tunggu...');
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (res) {
+                if (res.success && res.data) {
+                    $status.html('✅ Berhasil memproses ' + (res.data.uploaded ? res.data.uploaded.length : 0) + ' foto ke WebP.');
+                    showNotice('Foto berhasil diupload dan dikompres!', 'success');
+                    setTimeout(function () {
+                        location.reload();
+                    }, 1200);
+                } else {
+                    $status.html('❌ ' + (res.data || 'Gagal memproses upload.'));
+                    showNotice(res.data || 'Upload gagal.', 'error');
+                }
+            },
+            error: function () {
+                $status.html('❌ Terjadi kesalahan jaringan saat upload.');
+                showNotice('Koneksi gagal.', 'error');
+            }
+        });
+    });
+
+    // Gallery Pool Delete Handling
+    $(document).on('click', '.btn-delete-pool-img', function (e) {
+        e.preventDefault();
+        if (!confirm('Yakin ingin menghapus foto ini dari galeri pool?')) return;
+
+        const $btn = $(this);
+        const attachId = $btn.data('id');
+        const $card = $btn.closest('.pool-item-card');
+
+        $btn.text('Menghapus...').prop('disabled', true);
+
+        $.post(ajaxurl, {
+            action: 'apcai_delete_pool_image',
+            nonce: nonce,
+            attach_id: attachId
+        }, function (res) {
+            if (res.success) {
+                $card.fadeOut(300, function () { $(this).remove(); });
+                $('#pool-count').text(res.data.total_count);
+                showNotice('Foto dihapus dari pool.', 'success');
+            } else {
+                alert(res.data || 'Gagal menghapus gambar.');
+                $btn.text('Hapus').prop('disabled', false);
+            }
+        });
+    });
 });

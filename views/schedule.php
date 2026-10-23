@@ -18,6 +18,34 @@
                 </div>
             </div>
 
+            <!-- Auto Topic Research & Autopilot Setting -->
+            <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:20px;">
+                <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;">
+                    <input type="checkbox" name="auto_research_topics" value="1" <?php checked($settings['auto_research_topics'] ?? '1', '1'); ?> style="width:18px;height:18px;">
+                    🤖 Auto Search / Riset Topik Mandiri (Full Autopilot)
+                </label>
+                <div class="apcai-help" style="margin-top:4px;color:#1d4ed8;">
+                    Jika dicentang, AI akan otomatis meriset topik baru dari kategori secara mandiri setiap kali antrian topik menipis (&lt; 5 topik). Anda tidak perlu meriset topik manual lagi — plugin akan terus mencari topik dan mempostingnya tanpa henti.
+                </div>
+
+                <div style="display:grid;grid-template-columns: 1fr 1fr;gap:16px;margin-top:12px;">
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label style="color:#1e3a8a;font-weight:600;">Jumlah Topik Sekali Riset Otomatis</label>
+                        <input type="number" name="auto_research_count" class="apcai-input" min="3" max="20" value="<?php echo esc_attr($settings['auto_research_count'] ?? 5); ?>">
+                        <div class="apcai-help">Berapa topik yang otomatis di-generate AI saat stok topik habis (Default: 5).</div>
+                    </div>
+
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label style="color:#1e3a8a;font-weight:600;">Rotasi Kategori Auto Riset</label>
+                        <select name="auto_research_category_mode" class="apcai-select">
+                            <option value="rotate" <?php selected($settings['auto_research_category_mode'] ?? 'rotate', 'rotate'); ?>>🔄 Rotasi Otomatis Semua Kategori (Merata)</option>
+                            <option value="specific" <?php selected($settings['auto_research_category_mode'] ?? '', 'specific'); ?>>🎯 Kategori Tertentu Saja</option>
+                        </select>
+                        <div class="apcai-help">Memastikan artikel terdistribusi adil di seluruh kategori silo blog Anda.</div>
+                    </div>
+                </div>
+            </div>
+
             <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
                 <div class="apcai-form-group">
                     <label>Jumlah Posting Per Hari (Frekuensi)</label>

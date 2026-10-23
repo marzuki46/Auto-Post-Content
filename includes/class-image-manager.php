@@ -200,6 +200,160 @@ class APCAI_Image_Manager {
     }
 
     /**
+     * Upload dan proses file gambar lokal (user upload), convert ke WebP, dan simpan ke pool galeri plugin
+     */
+    public static function process_local_upload(array $file): array|WP_Error {
+        if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return new WP_Error('no_file', 'File upload tidak ditemukan.');
+        }
+
+        $file_info = @getimagesize($file['tmp_name']);
+        if (!$file_info) {
+            return new WP_Error('invalid_image', 'File bukan gambar valid.');
+        }
+
+        $orig_mime = $file_info['mime'];
+        $orig_w    = $file_info[0];
+        $orig_h    = $file_info[1];
+
+        $source_gd = null;
+        switch ($orig_mime) {
+            case 'image/jpeg':
+                $source_gd = @imagecreatefromjpeg($file['tmp_name']);
+                break;
+            case 'image/png':
+                $source_gd = @imagecreatefrompng($file['tmp_name']);
+                break;
+            case 'image/webp':
+                if (function_exists('imagecreatefromwebp')) {
+                    $source_gd = @imagecreatefromwebp($file['tmp_name']);
+                }
+                break;
+        }
+
+        if (!$source_gd) {
+            return new WP_Error('gd_failed', 'Gagal memproses gambar GD.');
+        }
+
+        $max_width = 1200;
+        $max_height = 800;
+        $target_w = $orig_w;
+        $target_h = $orig_h;
+
+        if ($orig_w > $max_width || $orig_h > $max_height) {
+            $ratio = min($max_width / $orig_w, $max_height / $orig_h);
+            $target_w = (int) round($orig_w * $ratio);
+            $target_h = (int) round($orig_h * $ratio);
+        }
+
+        $canvas = imagecreatetruecolor($target_w, $target_h);
+        if ($orig_mime === 'image/png') {
+            imagealphablending($canvas, false);
+            imagesavealpha($canvas, true);
+            $transparent = imagecolorallocatealpha($canvas, 255, 255, 255, 127);
+            imagefilledrectangle($canvas, 0, 0, $target_w, $target_h, $transparent);
+        }
+
+        imagecopyresampled($canvas, $source_gd, 0, 0, 0, 0, $target_w, $target_h, $orig_w, $orig_h);
+
+        $wp_upload_dir = wp_upload_dir();
+        $base_name = sanitize_title(pathinfo($file['name'], PATHINFO_FILENAME));
+        $file_name = 'pool-' . $base_name . '-' . wp_generate_password(6, false, false) . '.webp';
+        $target_path = $wp_upload_dir['path'] . '/' . $file_name;
+
+        $saved = false;
+        if (function_exists('imagewebp')) {
+            $saved = imagewebp($canvas, $target_path, 82);
+        }
+        if (!$saved) {
+            $file_name = 'pool-' . $base_name . '-' . wp_generate_password(6, false, false) . '.jpg';
+            $target_path = $wp_upload_dir['path'] . '/' . $file_name;
+            $saved = imagejpeg($canvas, $target_path, 82);
+        }
+
+        imagedestroy($canvas);
+        imagedestroy($source_gd);
+
+        if (!$saved || !file_exists($target_path)) {
+            return new WP_Error('save_failed', 'Gagal menyimpan hasil kompresi WebP.');
+        }
+
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+        require_once ABSPATH . 'wp-admin/includes/media.php';
+
+        $file_type = wp_check_filetype($file_name, null);
+        $attachment = [
+            'post_mime_type' => $file_type['type'],
+            'post_title'     => preg_replace('/\.[^.]+$/', '', $file['name']),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ];
+
+        $attach_id = wp_insert_attachment($attachment, $target_path);
+        if (is_wp_error($attach_id) || !$attach_id) {
+            @unlink($target_path);
+            return new WP_Error('attach_failed', 'Gagal mendaftarkan attachment di Media Library.');
+        }
+
+        $attach_data = wp_generate_attachment_metadata($attach_id, $target_path);
+        wp_update_attachment_metadata($attach_id, $attach_data);
+        update_post_meta($attach_id, '_apcai_pool_image', '1');
+
+        // Simpan ID ke daftar pool gambar plugin
+        $pool = get_option('apcai_custom_images_pool', []);
+        if (!in_array($attach_id, $pool)) {
+            $pool[] = $attach_id;
+            update_option('apcai_custom_images_pool', $pool);
+        }
+
+        return [
+            'id'   => $attach_id,
+            'url'  => wp_get_attachment_image_url($attach_id, 'medium'),
+            'size' => size_format(filesize($target_path)),
+        ];
+    }
+
+    /**
+     * Ambil 1 gambar dari pool lokal secara rotasi atau acak, pasang sebagai Featured Image, dan update Alt/Title/Caption
+     */
+    public static function attach_from_local_pool(int $post_id, string $alt_text, string $title, string $caption = ''): bool {
+        $pool = get_option('apcai_custom_images_pool', []);
+        if (empty($pool)) return false;
+
+        // Ambil attachment ID secara berputar (rotasi berurutan agar merata)
+        $last_idx = (int) get_option('apcai_custom_images_index', 0);
+        if ($last_idx >= count($pool)) {
+            $last_idx = 0;
+        }
+
+        $attach_id = $pool[$last_idx] ?? null;
+        update_option('apcai_custom_images_index', $last_idx + 1);
+
+        if (!$attach_id || !wp_get_attachment_url($attach_id)) {
+            // Bersihkan jika ada attachment yang terhapus dari media library
+            $pool = array_values(array_filter($pool, fn($id) => (bool) wp_get_attachment_url($id)));
+            update_option('apcai_custom_images_pool', $pool);
+            if (empty($pool)) return false;
+            $attach_id = $pool[0];
+        }
+
+        // Update metadata SEO attachment sesuai postingan ini
+        wp_update_post([
+            'ID'           => $attach_id,
+            'post_title'   => sanitize_text_field($title),
+            'post_content' => sanitize_textarea_field($caption),
+            'post_excerpt' => sanitize_textarea_field($caption),
+        ]);
+        if (!empty($alt_text)) {
+            update_post_meta($attach_id, '_wp_attachment_image_alt', sanitize_text_field($alt_text));
+        }
+
+        set_post_thumbnail($post_id, $attach_id);
+        return true;
+    }
+
+    /**
      * Cari gambar dari Bing dan langsung attach ke artikel post
      */
     public static function attach_bing_featured_image(int $post_id, string $search_query, string $alt_text, string $title, string $caption = '') {

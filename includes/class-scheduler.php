@@ -82,15 +82,19 @@ class APCAI_Scheduler {
 
     public static function run_daily_planner() {
         global $wpdb;
+        $settings = get_option('apcai_settings', []);
         $table_topics = APCAI_DB::table_topics();
         $unread_count = (int)$wpdb->get_var("SELECT COUNT(*) FROM $table_topics WHERE status = 'idea'");
 
-        // Jika stok topik menipis (< 5), otomatis brainstorm AI untuk kategori aktif
-        if ($unread_count < 5) {
+        // Jika auto research diaktifkan dan stok topik menipis (< 5), otomatis riset topik baru
+        $auto_research = $settings['auto_research_topics'] ?? '1';
+        $research_count = max(3, min(20, (int)($settings['auto_research_count'] ?? 5)));
+
+        if ($auto_research === '1' && $unread_count < 5) {
             $categories = get_categories(['hide_empty' => false]);
             if (!empty($categories)) {
-                $random_cat = $categories[array_rand($categories)]->term_id;
-                APCAI_Generator::brainstorm_topics(5, $random_cat);
+                $target_cat = $categories[array_rand($categories)]->term_id;
+                APCAI_Generator::brainstorm_topics($research_count, $target_cat);
             }
         }
 

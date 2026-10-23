@@ -24,6 +24,10 @@ class APCAI_Admin {
         // Check GitHub Update AJAX
         add_action('wp_ajax_apcai_check_update_now', [__CLASS__, 'ajax_check_update_now']);
 
+        // Pool Image Upload & Delete AJAX
+        add_action('wp_ajax_apcai_upload_pool_images', [__CLASS__, 'ajax_upload_pool_images']);
+        add_action('wp_ajax_apcai_delete_pool_image', [__CLASS__, 'ajax_delete_pool_image']);
+
         // Filter kolom di All Posts WP
         add_filter('manage_posts_columns', [__CLASS__, 'add_custom_post_columns']);
         add_action('manage_posts_custom_column', [__CLASS__, 'render_custom_post_columns'], 10, 2);
@@ -74,6 +78,15 @@ class APCAI_Admin {
             'manage_options',
             'apcai-schedule',
             [__CLASS__, 'page_schedule']
+        );
+
+        add_submenu_page(
+            'apcai-dashboard',
+            __('Pool Foto Sendiri', 'auto-post-content'),
+            __('Pool Foto Sendiri', 'auto-post-content'),
+            'manage_options',
+            'apcai-gallery',
+            [__CLASS__, 'page_gallery']
         );
 
         add_submenu_page(
@@ -160,6 +173,24 @@ class APCAI_Admin {
         $slots = get_option('apcai_scheduled_slots_today', []);
         $categories = get_categories(['hide_empty' => false]);
         include APCAI_PLUGIN_DIR . 'views/schedule.php';
+    }
+
+    public static function page_gallery() {
+        $pool_ids = get_option('apcai_custom_images_pool', []);
+        $pool_images = [];
+        foreach ($pool_ids as $id) {
+            $url = wp_get_attachment_image_url($id, 'medium');
+            if ($url) {
+                $file = get_attached_file($id);
+                $size = file_exists($file) ? size_format(filesize($file)) : 'WebP';
+                $pool_images[] = [
+                    'id'   => $id,
+                    'url'  => $url,
+                    'size' => $size,
+                ];
+            }
+        }
+        include APCAI_PLUGIN_DIR . 'views/gallery.php';
     }
 
     public static function page_settings() {
@@ -337,6 +368,67 @@ class APCAI_Admin {
             'en_id'      => $post_id_en,
             'view_url'   => get_permalink($post_id_primary),
             'edit_url'   => get_edit_post_link($post_id_primary, ''),
+        ]);
+    }
+
+    public static function ajax_upload_pool_images() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('upload_files')) wp_send_json_error('Unauthorized');
+
+        if (empty($_FILES['files'])) {
+            wp_send_json_error('Tidak ada file yang diunggah.');
+        }
+
+        $files = $_FILES['files'];
+        $uploaded = [];
+        $errors = [];
+
+        // Loop multi-file upload
+        $count = count($files['name']);
+        for ($i = 0; $i < $count; $i++) {
+            if ($files['error'][$i] !== UPLOAD_ERR_OK) continue;
+
+            $single = [
+                'name'     => $files['name'][$i],
+                'type'     => $files['type'][$i],
+                'tmp_name' => $files['tmp_name'][$i],
+                'error'    => $files['error'][$i],
+                'size'     => $files['size'][$i],
+            ];
+
+            $res = APCAI_Image_Manager::process_local_upload($single);
+            if (is_wp_error($res)) {
+                $errors[] = $single['name'] . ': ' . $res->get_error_message();
+            } else {
+                $uploaded[] = $res;
+            }
+        }
+
+        $pool = get_option('apcai_custom_images_pool', []);
+
+        wp_send_json_success([
+            'uploaded'    => $uploaded,
+            'errors'      => $errors,
+            'total_count' => count($pool),
+        ]);
+    }
+
+    public static function ajax_delete_pool_image() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('upload_files')) wp_send_json_error('Unauthorized');
+
+        $attach_id = absint($_POST['attach_id'] ?? 0);
+        if (!$attach_id) wp_send_json_error('ID lampiran tidak valid.');
+
+        $pool = get_option('apcai_custom_images_pool', []);
+        $pool = array_values(array_diff($pool, [$attach_id]));
+        update_option('apcai_custom_images_pool', $pool);
+
+        wp_delete_attachment($attach_id, true);
+
+        wp_send_json_success([
+            'deleted_id'  => $attach_id,
+            'total_count' => count($pool),
         ]);
     }
 

@@ -92,10 +92,27 @@
             <div style="background:#f0fdf4;padding:16px;border-radius:6px;border:1px solid #bbf7d0;margin-top:15px;">
                 <label style="display:flex;align-items:center;gap:10px;font-weight:600;color:#166534;cursor:pointer;">
                     <input type="checkbox" name="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>
-                    🖼️ Auto Download Bing Image, Kompresi & Convert ke WebP, plus Otomatis Isi Alt/Title/Desc SEO
+                    🖼️ Aktifkan Auto Thumbnail Kompresi WebP & Otomatis Lengkapi SEO (Alt, Title, Desc)
                 </label>
                 <div class="apcai-help" style="margin-top:6px;color:#15803d;">
-                    Saat artikel dipublish (manual atau schedule otomatis), plugin akan otomatis mencari foto beresolusi tinggi di Bing Image berdasarkan topik/keyword, mengompres ukuran menjadi sangat ringan (&plusmn;40-80 KB) dalam format WebP tanpa mengurangi kualitas, melengkapi Alt Image & Caption SEO, lalu menjadikannya Featured Image (Thumbnail).
+                    Saat artikel dipublish (manual atau schedule otomatis), plugin akan otomatis memasang foto thumbnail WebP ringan (&plusmn;40-80 KB) tanpa mengurangi kualitas, lengkap dengan Alt Image dan Caption SEO.
+                </div>
+
+                <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #86efac;">
+                    <label style="font-weight:600;color:#166534;display:block;margin-bottom:6px;">Pilihan Sumber Gambar Thumbnail:</label>
+                    <div style="display:flex;gap:20px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#14532d;">
+                            <input type="radio" name="thumbnail_source" value="bing" <?php checked($settings['thumbnail_source'] ?? 'bing', 'bing'); ?>>
+                            🌐 Ambil Otomatis dari Bing Image Search (Sesuai Keyword & Topik)
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#14532d;">
+                            <input type="radio" name="thumbnail_source" value="pool" <?php checked($settings['thumbnail_source'] ?? 'bing', 'pool'); ?>>
+                            📁 Gunakan Koleksi Foto Sendiri (Pool Gambar WebP Lokal)
+                        </label>
+                    </div>
+                    <div class="apcai-help" style="margin-top:4px;color:#166534;">
+                        Jika memilih <strong>Koleksi Foto Sendiri</strong>, silakan unggah minimal 10 foto di menu <strong>Pool Foto Sendiri</strong>. Sistem akan merotasikan foto tersebut secara otomatis bergantian tiap kali ada postingan baru.
+                    </div>
                 </div>
             </div>
         </div>

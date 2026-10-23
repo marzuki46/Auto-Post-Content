@@ -487,29 +487,39 @@ CONTENT (MARKDOWN):
             wp_set_post_tags($post_id, $data['keywords'], true);
         }
 
-        // Auto Download & Set Bing Featured Image (WebP Compressed)
+        // Auto Download / Set Featured Image (WebP Compressed)
         $auto_thumb = $settings['auto_thumbnail'] ?? '1';
-        if ($auto_thumb === '1' && class_exists('APCAI_Image_Manager')) {
-            // Tentukan query pencarian terbaik (Keyword utama atau judul artikel)
-            $search_kw = '';
-            if (!empty($data['keywords']) && is_array($data['keywords'])) {
-                $search_kw = reset($data['keywords']);
-            }
-            if (empty($search_kw)) {
-                $search_kw = $title;
-            }
+        $thumb_source = $settings['thumbnail_source'] ?? 'bing'; // 'bing' atau 'pool'
 
-            // Alt text deskriptif natural berbasis keyword & judul
+        if ($auto_thumb === '1' && class_exists('APCAI_Image_Manager')) {
+            $title = sanitize_text_field($data['title'] ?? '');
             $alt_text = !empty($data['keywords'][0]) ? ($data['keywords'][0] . ' - ' . $title) : $title;
             $caption  = !empty($data['excerpt']) ? $data['excerpt'] : $title;
 
-            APCAI_Image_Manager::attach_bing_featured_image(
-                $post_id,
-                $search_kw,
-                $alt_text,
-                $title,
-                $caption
-            );
+            $attached = false;
+            // Jika memilih foto sendiri (Pool Koleksi Gambar Lokal)
+            if ($thumb_source === 'pool') {
+                $attached = APCAI_Image_Manager::attach_from_local_pool($post_id, $alt_text, $title, $caption);
+            }
+
+            // Jika mode Bing atau jika pool lokal masih kosong, ambil dari Bing
+            if (!$attached) {
+                $search_kw = '';
+                if (!empty($data['keywords']) && is_array($data['keywords'])) {
+                    $search_kw = reset($data['keywords']);
+                }
+                if (empty($search_kw)) {
+                    $search_kw = $title;
+                }
+
+                APCAI_Image_Manager::attach_bing_featured_image(
+                    $post_id,
+                    $search_kw,
+                    $alt_text,
+                    $title,
+                    $caption
+                );
+            }
         }
 
         return $post_id;
