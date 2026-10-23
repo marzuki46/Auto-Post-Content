@@ -65,13 +65,13 @@ class APCAI_AI_Client {
             return new WP_Error('api_http_error', "API Error (HTTP $code) dari 9Router: $detail");
         }
 
-        // Dukungan respons Server-Sent Events (SSE chunk data: { ... })
-        if (str_starts_with($raw_body, 'data:')) {
-            $lines = explode("\n", $raw_body);
+        // Dukungan respons Server-Sent Events (SSE chunk data: { ... } atau \r\n)
+        if (preg_match('/(?:^|\n)data:\s*\{/', $raw_body)) {
+            $lines = preg_split('/\r\n|\r|\n/', $raw_body);
             $full_content = '';
             foreach ($lines as $line) {
                 $line = trim($line);
-                if (empty($line) || $line === 'data: [DONE]') continue;
+                if (empty($line) || $line === 'data: [DONE]' || $line === '[DONE]') continue;
                 if (str_starts_with($line, 'data:')) {
                     $json_str = trim(substr($line, 5));
                     $chunk = json_decode($json_str, true);
@@ -84,7 +84,7 @@ class APCAI_AI_Client {
                     }
                 }
             }
-            if (!empty($full_content)) {
+            if ($full_content !== '') {
                 return $full_content;
             }
         }
