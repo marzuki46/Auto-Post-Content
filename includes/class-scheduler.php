@@ -71,9 +71,16 @@ class APCAI_Scheduler {
                     $timestamps[] = $slot_time;
                 }
             }
+
+            // Jika semua slot hari ini sudah terlewat karena scheduler baru diaktifkan sore/malam,
+            // buatkan minimal 1 slot segera dalam 10-15 menit ke depan agar hari ini tidak kosong
+            if (empty($timestamps)) {
+                $timestamps[] = $now + rand(300, 900);
+            }
         }
 
         update_option('apcai_scheduled_slots_today', $timestamps);
+        update_option('apcai_slots_generated_date', date_i18n('Y-m-d', $now));
 
         if (!wp_next_scheduled(self::CRON_HOOK_EXECUTE)) {
             wp_schedule_event(time() + 60, 'apcai_ten_minutes', self::CRON_HOOK_EXECUTE);
@@ -108,9 +115,14 @@ class APCAI_Scheduler {
         }
 
         $now = current_time('timestamp');
+        $today_date = date_i18n('Y-m-d', $now);
+        $last_generated_date = get_option('apcai_slots_generated_date', '');
         $slots = get_option('apcai_scheduled_slots_today', []);
-        if (empty($slots) || !is_array($slots)) {
-            return;
+
+        // Jika hari berganti ATAU slot hari ini kosong tapi setting aktif -> jadwalkan ulang untuk hari ini
+        if ($last_generated_date !== $today_date || empty($slots) || !is_array($slots)) {
+            self::sync_schedule();
+            $slots = get_option('apcai_scheduled_slots_today', []);
         }
 
         $due_slots = [];
