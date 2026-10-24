@@ -89,6 +89,29 @@
                 <input type="text" name="brand_voice" class="apcai-input" value="<?php echo esc_attr($settings['brand_voice'] ?? ''); ?>" placeholder="Contoh: Informatif, ramah, otoritatif, persuasif">
             </div>
 
+            <!-- Form Bahan Pembuatan Konten / Basis Data Perusahaan -->
+            <div style="background:#f8fafc;padding:16px;border-radius:6px;border:1px solid #cbd5e1;margin-top:15px;">
+                <h3 style="margin-top:0;font-size:14px;color:#0f172a;display:flex;align-items:center;gap:6px;">
+                    📊 Bahan Pembuatan Konten & Basis Data Terkini (Harga, Promo, Berita, & Info Perusahaan)
+                </h3>
+                <div class="apcai-help" style="margin-bottom:12px;color:#334155;">
+                    Masukkan data faktual terbaru perusahaan (daftar harga unit, diskon bulan ini, promo DP/angsuran, jam operasional, rute layanan, dsb). <strong>AI akan memprioritaskan data ini saat meriset topik dan menyusun konten baru</strong>. Jika form ini kosong, AI akan meriset topik umum sesuai niche seperti biasa.
+                </div>
+
+                <div style="display:grid;grid-template-columns: 2fr 1fr;gap:16px;margin-bottom:12px;">
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label style="font-weight:600;color:#1e293b;">Data / Update Informasi Terbaru</label>
+                        <textarea name="knowledge_data" class="apcai-textarea" rows="6" placeholder="Contoh:&#10;- Daftar Harga Honda Vario 160 OTR Solo per Oktober 2026: Tipe CBS Rp 27.500.000, Tipe ABS Rp 30.200.000&#10;- Promo Honda Beat DP mulai Rp 800rb khusus KTP Karanganyar & Sukoharjo&#10;- Layanan Servis Kunjung & Booking Online Dealer Cahaya Sakti Motor Solo WA: 0812xxxx"><?php echo esc_textarea($settings['knowledge_data'] ?? ''); ?></textarea>
+                    </div>
+
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label style="font-weight:600;color:#1e293b;">Tanggal Update Data (Penting)</label>
+                        <input type="text" name="knowledge_updated_date" class="apcai-input" value="<?php echo esc_attr($settings['knowledge_updated_date'] ?? date_i18n('d F Y')); ?>" placeholder="Contoh: 24 Oktober 2026 / Oktober 2026">
+                        <div class="apcai-help" style="margin-top:6px;">Tanggal ini akan dicantumkan secara presisi oleh AI agar pembaca dan mesin pencari mengetahui data harga/info tersebut adalah yang paling mutakhir.</div>
+                    </div>
+                </div>
+            </div>
+
             <div style="background:#f0fdf4;padding:16px;border-radius:6px;border:1px solid #bbf7d0;margin-top:15px;">
                 <label style="display:flex;align-items:center;gap:10px;font-weight:600;color:#166534;cursor:pointer;">
                     <input type="checkbox" name="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>

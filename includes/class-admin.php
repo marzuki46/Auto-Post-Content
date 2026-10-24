@@ -230,7 +230,7 @@ class APCAI_Admin {
         foreach ($input as $k => $v) {
             if (is_array($v)) {
                 $current[$k] = $v;
-            } elseif (in_array($k, ['keyword_prompt', 'content_prompt', 'cta_instruction', 'angle'])) {
+            } elseif (in_array($k, ['keyword_prompt', 'content_prompt', 'cta_instruction', 'angle', 'knowledge_data'])) {
                 $current[$k] = sanitize_textarea_field(wp_unslash($v));
             } else {
                 $current[$k] = sanitize_text_field(wp_unslash($v));

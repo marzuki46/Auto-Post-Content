@@ -41,6 +41,16 @@
                 <textarea id="studio-topic" class="apcai-textarea" rows="3" placeholder="Contoh: 7 Tips Mempercepat Loading Toko Online WooCommerce..."></textarea>
             </div>
 
+            <?php if (!empty($settings['knowledge_data'])): ?>
+            <div style="background:#eff6ff;padding:12px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
+                <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                    📌 Basis Data Terkini Aktif (Update: <?php echo esc_html($settings['knowledge_updated_date'] ?? date_i18n('d F Y')); ?>)
+                </div>
+                <div style="font-size:12px;color:#1e3a8a;max-height:80px;overflow-y:auto;white-space:pre-wrap;background:#fff;padding:8px;border-radius:4px;border:1px solid #dbeafe;"><?php echo esc_html($settings['knowledge_data']); ?></div>
+                <div class="apcai-help" style="color:#2563eb;margin-top:4px;">Data ini akan otomatis diintegrasikan dan diprioritaskan AI ke dalam artikel. Edit di menu Pengaturan.</div>
+            </div>
+            <?php endif; ?>
+
             <div class="apcai-form-group">
                 <label>Instruksi Riset Kata Kunci Entitas (Entity SEO)</label>
                 <textarea id="studio-kw-prompt" class="apcai-textarea" rows="3"><?php echo esc_textarea($settings['keyword_prompt'] ?? ''); ?></textarea>

@@ -63,6 +63,19 @@ class APCAI_Generator {
         $brand_ctx[] = "Fokus Kategori / Sub-Niche: " . $cat_name;
         if (!empty($settings['audience']))    $brand_ctx[] = "Target audience: " . $settings['audience'];
         if (!empty($settings['brand_voice'])) $brand_ctx[] = "Brand voice: " . $settings['brand_voice'];
+
+        // Cek Bahan Pembuatan Konten / Data Perusahaan
+        $knowledge_data = trim($settings['knowledge_data'] ?? '');
+        $knowledge_date = trim($settings['knowledge_updated_date'] ?? date_i18n('d F Y'));
+        $data_instruction = "";
+
+        if (!empty($knowledge_data)) {
+            $brand_ctx[] = "DATA & UPDATE INFORMASI TERKINI PERUSAHAAN (Tanggal Update: {$knowledge_date}):\n\"\"\"\n{$knowledge_data}\n\"\"\"";
+            $data_instruction = "PRIORITAS SUMBER DATA:
+Situs kami memiliki data/informasi terkini di atas (update per {$knowledge_date}).
+Prioritaskan merancang ide topik artikel yang mengangkat data update, promo, atau informasi harga tersebut jika relevan dengan kategori '{$cat_name}'.";
+        }
+
         $brand_ctx_str = implode("\n", $brand_ctx);
 
         $target_lang = ($settings['default_lang'] ?? 'id') === 'en' ? 'English' : 'Bahasa Indonesia';
@@ -82,7 +95,7 @@ class APCAI_Generator {
 
 {$brand_ctx_str}
 
-PEDOMAN STRATEGI FUNNELING:
+" . (!empty($data_instruction) ? "{$data_instruction}\n\n" : "") . "PEDOMAN STRATEGI FUNNELING:
 {$funnel_instruction}
 
 Artikel yang sudah ada di kategori ini (JANGAN ulangi):
@@ -287,6 +300,19 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
 - Brand Voice / Nada Penulisan: {$brand_voice}
 - Website Resmi: {$site_domain} ({$site_url})";
 
+        // Cek Bahan Pembuatan Konten / Basis Data Perusahaan
+        $knowledge_data = trim($settings['knowledge_data'] ?? '');
+        $knowledge_date = trim($settings['knowledge_updated_date'] ?? date_i18n('d F Y'));
+        $knowledge_prompt_block = "";
+
+        if (!empty($knowledge_data)) {
+            $brand_profile_prompt .= "\n\nBASIS DATA & INFORMASI TERKINI PERUSAHAAN (Per Tanggal: {$knowledge_date}):\n\"\"\"\n{$knowledge_data}\n\"\"\"";
+            $knowledge_prompt_block = "INTEGRASI DATA TERBARU PERUSAHAAN (Update {$knowledge_date}):
+- Di atas tercantum data riil & update terkini perusahaan (misalnya harga unit, promo, paket, info tanggal).
+- Anda WAJIB mengintegrasikan poin data yang relevan dengan topik ini secara faktual dan akurat ke dalam artikel.
+- Cantumkan tanggal update data tersebut (contoh: '...harga per {$knowledge_date}...') agar pembaca mendapatkan kepastian bahwa informasi ini adalah yang paling baru dan terpercaya.";
+        }
+
         $system_prompt = "Anda adalah Lead Content Creator & Senior Copywriter resmi dari {$site_name}.
 Tugas Anda: Mengembangkan topik dan data spesifik menjadi artikel blog yang mendalam, berbobot, akurat, mencerminkan identitas brand kami, dan 100% TERASA ALAMI SEPERTI DITULIS MANUSIA ASLI (BEBAS DARI POLA & KLISE ROBOT AI).
 Kategori: {$cat_name} | Tahap Funnel: " . strtoupper($funnel_stage) . " | Bahasa: {$lang_name}.
@@ -299,15 +325,16 @@ ATURAN WAJIB BRANDING & PENULISAN ALAMI (ANTI-AI PATTERN):
    - Sebut nama brand '{$site_name}' secara elegan dan kontekstual minimal 1-3 kali di dalam badan artikel (misalnya: saat memberikan rekomendasi solusi, perbandingan standar layanan, ketersediaan unit/produk, atau ajakan konsultasi).
    - SESUAIKAN DENGAN TARGET AUDIENS (" . (!empty($audience) ? $audience : "Pembaca lokal") . "): Gunakan referensi lokal, kondisi geografis, atau preferensi audiens target agar terasa sangat dekat dan personal.
    - NADA BICARA (BRAND VOICE): Terapkan tone penulisan '{$brand_voice}'.
-2. PATUHI & SERAP DATA INPUT PENGGUNA: Jika pengguna menginputkan data spesifik (tabel komparasi, nama tipe produk/motor, rute lokal, pro/kontra, spesifikasi), Anda WAJIB membahas dan menyajikan data tersebut secara utuh dan mendalam ke dalam artikel. Jangan mengabaikan poin-poin yang sudah ditulis pengguna!
-3. FORMAT TABEL MARKDOWN: Jika ada data komparasi atau perbandingan, sajikan dalam tabel Markdown standar (| Kolom 1 | Kolom 2 |) yang valid agar otomatis ter-render rapi di website.
-4. DILARANG LINK FIKTIF / 'EXAMPLE.COM': JANGAN PERNAH membuat link fiktif seperti 'example.com', 'domainanda.com', atau link karangan sendiri. HANYA gunakan link resmi dari domain situs ini ({$site_url}) atau link WhatsApp resmi yang disediakan di instruksi. Jika tidak ada instruksi link, jangan buat link fiktif.
-5. DILARANG KERAS PEMBUKA KLISE: Jangan pernah memulai artikel dengan frasa klise robot seperti: 'Di era digital yang serba cepat...', 'Dalam dunia yang terus berkembang...', 'Tidak dapat dipungkiri bahwa...', 'Apakah Anda sedang mencari...', atau 'Dalam artikel ini kita akan membahas...'. Mulai langsung dengan fakta nyata, studi kasus, keresahan riil di lapangan, atau sudut pandang tajam tanpa basa-basi.
-6. DILARANG SUB-JUDUL 'KESIMPULAN': Jangan pernah membuat heading berjudul 'Kesimpulan' atau 'Penutup', dan hindari frasa klise 'Sebagai kesimpulan...', 'Dapat disimpulkan bahwa...', 'Demikianlah pembahasan...'. Gantilah dengan sub-judul penutup yang kontekstual dan berisi rekomendasi langkah aksi nyata (Actionable Next Steps) dari {$site_name}.
-7. HINDARI GARIS MENDATAR: JANGAN gunakan garis pemisah horizontal seperti '---', '***', atau '___' di antara bagian artikel (kecuali di dalam sintaks baris pemisah tabel Markdown). Transisi antar bagian harus mengalir alami lewat teks dan sub-judul.
-8. RITME KALIMAT ALAMI: Variasikan panjang kalimat (kombinasi kalimat pendek, sedang, dan lugas). Hindari kalimat majemuk berbelit-belit yang membosankan. Tulis dengan nada bicara praktisi berpengalaman yang ramah dan solutif.
-9. JANGAN SPAM BOLDING: Hindari menebalkan (**bold**) kata kunci secara berlebihan di setiap paragraf. Bolding hanya dipakai untuk 1-2 poin yang benar-benar krusial.
-10. GUNAKAN KATA 'CARA' (BUKAN 'PANDUAN'): Dalam pembuatan konten bahasa Indonesia, JANGAN gunakan kata 'Panduan' (seperti 'Panduan Lengkap...', 'Panduan Memulai...', 'Panduan Praktis...'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...'). Audiens Indonesia mencari di Google dengan kata 'Cara'.
+2. DATA RIIL & TANGGAL UPDATE: Jika ada 'BASIS DATA PERUSAHAAN' di atas yang berkaitan dengan artikel ini, gunakan data tersebut secara akurat dan sebutkan tanggal update-nya ({$knowledge_date}) pada bagian tabel atau rincian harga/info.
+3. PATUHI & SERAP DATA INPUT PENGGUNA: Jika pengguna menginputkan data spesifik (tabel komparasi, nama tipe produk/motor, rute lokal, pro/kontra, spesifikasi), Anda WAJIB membahas dan menyajikan data tersebut secara utuh dan mendalam ke dalam artikel. Jangan mengabaikan poin-poin yang sudah ditulis pengguna!
+4. FORMAT TABEL MARKDOWN: Jika ada data komparasi atau perbandingan, sajikan dalam tabel Markdown standar (| Kolom 1 | Kolom 2 |) yang valid agar otomatis ter-render rapi di website.
+5. DILARANG LINK FIKTIF / 'EXAMPLE.COM': JANGAN PERNAH membuat link fiktif seperti 'example.com', 'domainanda.com', atau link karangan sendiri. HANYA gunakan link resmi dari domain situs ini ({$site_url}) atau link WhatsApp resmi yang disediakan di instruksi. Jika tidak ada instruksi link, jangan buat link fiktif.
+6. DILARANG KERAS PEMBUKA KLISE: Jangan pernah memulai artikel dengan frasa klise robot seperti: 'Di era digital yang serba cepat...', 'Dalam dunia yang terus berkembang...', 'Tidak dapat dipungkiri bahwa...', 'Apakah Anda sedang mencari...', atau 'Dalam artikel ini kita akan membahas...'. Mulai langsung dengan fakta nyata, studi kasus, keresahan riil di lapangan, atau sudut pandang tajam tanpa basa-basi.
+7. DILARANG SUB-JUDUL 'KESIMPULAN': Jangan pernah membuat heading berjudul 'Kesimpulan' atau 'Penutup', dan hindari frasa klise 'Sebagai kesimpulan...', 'Dapat disimpulkan bahwa...', 'Demikianlah pembahasan...'. Gantilah dengan sub-judul penutup yang kontekstual dan berisi rekomendasi langkah aksi nyata (Actionable Next Steps) dari {$site_name}.
+8. HINDARI GARIS MENDATAR: JANGAN gunakan garis pemisah horizontal seperti '---', '***', atau '___' di antara bagian artikel (kecuali di dalam sintaks baris pemisah tabel Markdown). Transisi antar bagian harus mengalir alami lewat teks dan sub-judul.
+9. RITME KALIMAT ALAMI: Variasikan panjang kalimat (kombinasi kalimat pendek, sedang, dan lugas). Hindari kalimat majemuk berbelit-belit yang membosankan. Tulis dengan nada bicara praktisi berpengalaman yang ramah dan solutif.
+10. JANGAN SPAM BOLDING: Hindari menebalkan (**bold**) kata kunci secara berlebihan di setiap paragraf. Bolding hanya dipakai untuk 1-2 poin yang benar-benar krusial.
+11. GUNAKAN KATA 'CARA' (BUKAN 'PANDUAN'): Dalam pembuatan konten bahasa Indonesia, JANGAN gunakan kata 'Panduan' (seperti 'Panduan Lengkap...', 'Panduan Memulai...', 'Panduan Praktis...'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...'). Audiens Indonesia mencari di Google dengan kata 'Cara'.
 
 ATURAN STRUKTUR JSON:
 Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown wrapper dengan struktur:
@@ -317,7 +344,7 @@ Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau ma
   \"seo_description\": \"Meta deskripsi persuasif (maks 155 karakter)\",
   \"excerpt\": \"Ringkasan artikel 2-3 kalimat tajam\",
   \"keywords\": [\"keyword 1\", \"keyword 2\", \"keyword 3\", \"keyword 4\", \"keyword 5\"],
-  \"content_md\": \"Isi lengkap artikel dalam format Markdown murni (mulai langsung dari paragraf intro atau ## Sub-judul pertama, tanpa H1 # judul, menyerap data input pengguna, menyisipkan sentuhan branding {$site_name} secara natural, tanpa garis horizontal ---, mengalir alami dengan tabel/poin praktis, link internal resmi tanpa domain fiktif, dan tombol CTA)...\"
+  \"content_md\": \"Isi lengkap artikel dalam format Markdown murni (mulai langsung dari paragraf intro atau ## Sub-judul pertama, tanpa H1 # judul, menyerap data input pengguna & basis data terbaru, menyisipkan sentuhan branding {$site_name} secara natural, tanpa garis horizontal ---, mengalir alami dengan tabel/poin praktis, link internal resmi tanpa domain fiktif, dan tombol CTA)...\"
 }";
 
         $user_prompt = "INPUT AWAL DARI PENGGUNA (TOPIK / PARAGRAF):
@@ -325,7 +352,7 @@ Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau ma
 " . substr($input_topic, 0, 10000) . "
 \"\"\"
 
-PANDUAN RISET ENTITY & KEYWORD:
+" . (!empty($knowledge_prompt_block) ? "{$knowledge_prompt_block}\n\n" : "") . "PANDUAN RISET ENTITY & KEYWORD:
 \"\"\"
 " . substr($keyword_prompt, 0, 3000) . "
 \"\"\"
