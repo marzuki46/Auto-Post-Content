@@ -241,6 +241,18 @@ class APCAI_Admin {
         $current['enable_internal_links'] = !empty($input['enable_internal_links']) ? 1 : 0;
         $current['enable_instant_indexing'] = !empty($input['enable_instant_indexing']) ? 1 : 0;
 
+        // Sinkronisasi otomatis dengan plugin nerd-for-wp jika diset
+        if (isset($input['nerd_email'])) {
+            $nerd_email = sanitize_email(wp_unslash($input['nerd_email']));
+            $current['nerd_email'] = $nerd_email;
+            update_option('nerd_email', $nerd_email);
+        }
+        if (isset($input['nerd_api_key'])) {
+            $nerd_key = sanitize_text_field(wp_unslash($input['nerd_api_key']));
+            $current['nerd_api_key'] = $nerd_key;
+            update_option('nerd_api_key', $nerd_key);
+        }
+
         update_option('apcai_settings', $current);
         APCAI_Scheduler::sync_schedule();
 

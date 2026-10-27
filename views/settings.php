@@ -196,18 +196,19 @@
             <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
                 <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;font-size:14px;">
                     <input type="checkbox" name="enable_instant_indexing" value="1" <?php checked($settings['enable_instant_indexing'] ?? '1', '1'); ?>>
-                    ⚡ Aktifkan Auto-Ping IndexNow (Bing, Yandex, Naver) & Google WebSub Hub
+                    ⚡ Aktifkan Auto-Ping IndexNow (Bing, Yandex, Naver), Google WebSub Hub, & NERD Indexing
                 </label>
                 <div class="apcai-help" style="margin-top:6px;color:#1e3a8a;">
                     Setiap postingan baru langsung di-push ke:
                     <ul style="margin:6px 0 0 18px;list-style:disc;">
                         <li><strong>IndexNow Protocol</strong>: Langsung menginstruksikan Bing, Yandex, Seznam, dan Naver untuk meng-crawl URL baru dalam hitungan detik.</li>
                         <li><strong>Google WebSub (PubSubHubbub)</strong>: Memberitahu hub Google secara real-time untuk segera menarik feed XML/RSS situs Anda.</li>
+                        <li><strong>NERD Indexing (Dojo - nerd.dojo.cx)</strong>: Otomatis submit URL postingan baru ke antrean indexing NERD for WordPress.</li>
                     </ul>
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
+            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;margin-bottom:16px;">
                 <div class="apcai-form-group">
                     <label>IndexNow API Key (Otomatis)</label>
                     <input type="text" class="apcai-input" value="<?php echo esc_attr(APCAI_Indexer::get_indexnow_key()); ?>" readonly style="background:#f1f5f9;color:#64748b;">
@@ -218,6 +219,28 @@
                     <label>Google WebSub Hub URL</label>
                     <input type="text" class="apcai-input" value="https://pubsubhubbub.appspot.com/" readonly style="background:#f1f5f9;color:#64748b;">
                     <div class="apcai-help">Hub resmi Google yang memantau feed <code><?php echo esc_html(get_feed_link('rss2') ?: home_url('/feed/')); ?></code>.</div>
+                </div>
+            </div>
+
+            <!-- NERD for WordPress / Dojo Integration -->
+            <div style="background:#fdf4ff;padding:16px;border-radius:6px;border:1px solid #f0abfc;">
+                <h3 style="margin-top:0;font-size:14px;color:#86198f;display:flex;align-items:center;gap:6px;">
+                    🎯 Integrasi NERD for WordPress (Dojo Indexing)
+                </h3>
+                <div class="apcai-help" style="margin-bottom:12px;color:#701a75;">
+                    Terhubung langsung dengan plugin <strong>NERD for WordPress</strong> (<code>nerd-for-wp</code>) atau endpoint resmi <code>https://nerd.dojo.cx/api/urls</code>. Jika Anda sudah mengaktifkan plugin NERD for WordPress, email dan API key di bawah akan tersinkronisasi otomatis.
+                </div>
+
+                <div style="display:grid;grid-template-columns: 1fr 1fr;gap:16px;">
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label style="font-weight:600;color:#581c87;">Dojo Email (NERD Indexing)</label>
+                        <input type="email" name="nerd_email" class="apcai-input" value="<?php echo esc_attr($settings['nerd_email'] ?? get_option('nerd_email', '')); ?>" placeholder="email@domain.com">
+                    </div>
+
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label style="font-weight:600;color:#581c87;">API Key (NERD Indexing)</label>
+                        <input type="text" name="nerd_api_key" class="apcai-input" value="<?php echo esc_attr($settings['nerd_api_key'] ?? get_option('nerd_api_key', '')); ?>" placeholder="Dapatkan dari https://nerd.dojo.cx/settings">
+                    </div>
                 </div>
             </div>
         </div>
