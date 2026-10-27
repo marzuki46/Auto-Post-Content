@@ -26,6 +26,7 @@ jQuery(document).ready(function ($) {
 
         settings['schedule_enabled'] = $('#schedule_enabled').is(':checked') ? 1 : 0;
         settings['enable_internal_links'] = $('#enable_internal_links').is(':checked') ? 1 : 0;
+        settings['enable_instant_indexing'] = $('input[name="enable_instant_indexing"]').is(':checked') ? 1 : 0;
 
         $.post(ajaxurl, {
             action: 'apcai_save_settings',

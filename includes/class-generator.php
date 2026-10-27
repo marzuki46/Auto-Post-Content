@@ -773,6 +773,14 @@ CONTENT (MARKDOWN):
             }
         }
 
+        // Instant Indexing Auto Ping (IndexNow & Google WebSub) jika status artikel publish
+        if ($post_status === 'publish' && class_exists('APCAI_Indexer')) {
+            $permalink = get_permalink($post_id);
+            if ($permalink) {
+                APCAI_Indexer::ping_all($permalink, $post_id);
+            }
+        }
+
         return $post_id;
     }
 }

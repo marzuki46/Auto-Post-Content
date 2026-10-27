@@ -186,9 +186,45 @@
             </div>
         </div>
 
-        <!-- 5. Integrasi Auto-Update GitHub -->
+        <!-- 5. Instant Indexing (IndexNow & Google WebSub) -->
         <div class="apcai-card">
-            <h2>5. Auto-Update via GitHub Release</h2>
+            <h2>5. Instant Indexing Otomatis (IndexNow & Google WebSub)</h2>
+            <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
+                Secara otomatis mengirimkan sinyal ping instan ke bot mesin pencari setiap kali ada artikel yang baru terbit, tanpa perlu submit manual satu per satu ke Search Console.
+            </p>
+
+            <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
+                <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;font-size:14px;">
+                    <input type="checkbox" name="enable_instant_indexing" value="1" <?php checked($settings['enable_instant_indexing'] ?? '1', '1'); ?>>
+                    ⚡ Aktifkan Auto-Ping IndexNow (Bing, Yandex, Naver) & Google WebSub Hub
+                </label>
+                <div class="apcai-help" style="margin-top:6px;color:#1e3a8a;">
+                    Setiap postingan baru langsung di-push ke:
+                    <ul style="margin:6px 0 0 18px;list-style:disc;">
+                        <li><strong>IndexNow Protocol</strong>: Langsung menginstruksikan Bing, Yandex, Seznam, dan Naver untuk meng-crawl URL baru dalam hitungan detik.</li>
+                        <li><strong>Google WebSub (PubSubHubbub)</strong>: Memberitahu hub Google secara real-time untuk segera menarik feed XML/RSS situs Anda.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
+                <div class="apcai-form-group">
+                    <label>IndexNow API Key (Otomatis)</label>
+                    <input type="text" class="apcai-input" value="<?php echo esc_attr(APCAI_Indexer::get_indexnow_key()); ?>" readonly style="background:#f1f5f9;color:#64748b;">
+                    <div class="apcai-help">Key ini otomatis diverifikasi oleh sistem melalui <code>/<?php echo esc_html(APCAI_Indexer::get_indexnow_key()); ?>.txt</code>.</div>
+                </div>
+
+                <div class="apcai-form-group">
+                    <label>Google WebSub Hub URL</label>
+                    <input type="text" class="apcai-input" value="https://pubsubhubbub.appspot.com/" readonly style="background:#f1f5f9;color:#64748b;">
+                    <div class="apcai-help">Hub resmi Google yang memantau feed <code><?php echo esc_html(get_feed_link('rss2') ?: home_url('/feed/')); ?></code>.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Integrasi Auto-Update GitHub -->
+        <div class="apcai-card">
+            <h2>6. Auto-Update via GitHub Release</h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 Aktifkan update otomatis tanpa perlu upload ZIP manual. WordPress akan mendownload release terbaru langsung dari repository GitHub Anda.
             </p>

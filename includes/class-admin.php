@@ -239,6 +239,7 @@ class APCAI_Admin {
 
         $current['schedule_enabled'] = !empty($input['schedule_enabled']) ? 1 : 0;
         $current['enable_internal_links'] = !empty($input['enable_internal_links']) ? 1 : 0;
+        $current['enable_instant_indexing'] = !empty($input['enable_instant_indexing']) ? 1 : 0;
 
         update_option('apcai_settings', $current);
         APCAI_Scheduler::sync_schedule();
