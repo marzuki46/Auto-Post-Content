@@ -354,6 +354,60 @@ class APCAI_Image_Manager {
     }
 
     /**
+     * Ambil 1 gambar dari WordPress Media Library yang sudah pernah diupload sebelumnya
+     * (Mendukung pencarian relevan berdasarkan kata kunci/judul, dengan fallback rotasi acak)
+     */
+    public static function attach_from_existing_media(int $post_id, string $alt_text, string $title, string $caption = '', string $keyword = ''): bool {
+        global $wpdb;
+
+        $attach_id = null;
+
+        // 1. Coba cari media gambar yang judul, caption, atau alt text-nya relevan dengan keyword
+        if (!empty($keyword)) {
+            $like = '%' . $wpdb->esc_like($keyword) . '%';
+            $sql = $wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts} 
+                 WHERE post_type = 'attachment' 
+                   AND post_mime_type LIKE 'image/%'
+                   AND ID != %d
+                   AND (post_title LIKE %s OR post_content LIKE %s OR post_excerpt LIKE %s)
+                 ORDER BY RAND() LIMIT 1",
+                $post_id,
+                $like,
+                $like,
+                $like
+            );
+            $attach_id = (int) $wpdb->get_var($sql);
+        }
+
+        // 2. Jika tidak ada yang cocok dengan kata kunci, ambil gambar apapun dari Media Library secara acak
+        if (empty($attach_id)) {
+            $sql = $wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts} 
+                 WHERE post_type = 'attachment' 
+                   AND post_mime_type LIKE 'image/%'
+                   AND ID != %d
+                 ORDER BY RAND() LIMIT 1",
+                $post_id
+            );
+            $attach_id = (int) $wpdb->get_var($sql);
+        }
+
+        if (empty($attach_id) || !wp_get_attachment_url($attach_id)) {
+            return false;
+        }
+
+        // Update metadata SEO attachment sesuai konteks postingan ini jika alt text kosong
+        $existing_alt = get_post_meta($attach_id, '_wp_attachment_image_alt', true);
+        if (empty($existing_alt) && !empty($alt_text)) {
+            update_post_meta($attach_id, '_wp_attachment_image_alt', sanitize_text_field($alt_text));
+        }
+
+        set_post_thumbnail($post_id, $attach_id);
+        return true;
+    }
+
+    /**
      * Cari gambar dari Bing dan langsung attach ke artikel post
      */
     public static function attach_bing_featured_image(int $post_id, string $search_query, string $alt_text, string $title, string $caption = '') {

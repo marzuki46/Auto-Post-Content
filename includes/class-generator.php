@@ -740,28 +740,28 @@ CONTENT (MARKDOWN):
 
         // Auto Download / Set Featured Image (WebP Compressed)
         $auto_thumb = $settings['auto_thumbnail'] ?? '1';
-        $thumb_source = $settings['thumbnail_source'] ?? 'bing'; // 'bing' atau 'pool'
+        $thumb_source = $settings['thumbnail_source'] ?? 'bing'; // 'bing', 'pool', atau 'media'
 
         if ($auto_thumb === '1' && class_exists('APCAI_Image_Manager')) {
             $title = sanitize_text_field($data['title'] ?? '');
             $alt_text = !empty($data['keywords'][0]) ? ($data['keywords'][0] . ' - ' . $title) : $title;
             $caption  = !empty($data['excerpt']) ? $data['excerpt'] : $title;
+            $primary_kw = (!empty($data['keywords']) && is_array($data['keywords'])) ? reset($data['keywords']) : $title;
 
             $attached = false;
-            // Jika memilih foto sendiri (Pool Koleksi Gambar Lokal)
+
+            // Opsi 1: Dari koleksi upload sendiri (Pool Koleksi Gambar Lokal)
             if ($thumb_source === 'pool') {
                 $attached = APCAI_Image_Manager::attach_from_local_pool($post_id, $alt_text, $title, $caption);
             }
+            // Opsi 2: Dari media WordPress yang pernah diupload sebelumnya
+            elseif ($thumb_source === 'media') {
+                $attached = APCAI_Image_Manager::attach_from_existing_media($post_id, $alt_text, $title, $caption, $primary_kw);
+            }
 
-            // Jika mode Bing atau jika pool lokal masih kosong, ambil dari Bing
+            // Opsi 3 (Default & Fallback jika pool atau media kosong): Ambil dari Bing Image Search
             if (!$attached) {
-                $search_kw = '';
-                if (!empty($data['keywords']) && is_array($data['keywords'])) {
-                    $search_kw = reset($data['keywords']);
-                }
-                if (empty($search_kw)) {
-                    $search_kw = $title;
-                }
+                $search_kw = !empty($primary_kw) ? $primary_kw : $title;
 
                 APCAI_Image_Manager::attach_bing_featured_image(
                     $post_id,

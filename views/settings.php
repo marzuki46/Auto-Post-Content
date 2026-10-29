@@ -122,19 +122,25 @@
                 </div>
 
                 <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #86efac;">
-                    <label style="font-weight:600;color:#166534;display:block;margin-bottom:6px;">Pilihan Sumber Gambar Thumbnail:</label>
-                    <div style="display:flex;gap:20px;">
-                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#14532d;">
+                    <label style="font-weight:600;color:#166534;display:block;margin-bottom:8px;">Pilihan Sumber Gambar Thumbnail:</label>
+                    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#14532d;font-weight:500;">
                             <input type="radio" name="thumbnail_source" value="bing" <?php checked($settings['thumbnail_source'] ?? 'bing', 'bing'); ?>>
-                            🌐 Ambil Otomatis dari Bing Image Search (Sesuai Keyword & Topik)
+                            1. 🌐 Otomatis dari Bing Image Search (WebP & Relevan Kata Kunci)
                         </label>
-                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#14532d;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#14532d;font-weight:500;">
                             <input type="radio" name="thumbnail_source" value="pool" <?php checked($settings['thumbnail_source'] ?? 'bing', 'pool'); ?>>
-                            📁 Gunakan Koleksi Foto Sendiri (Pool Gambar WebP Lokal)
+                            2. 📁 Koleksi Upload Sendiri (Pool Gambar WebP Lokal)
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#14532d;font-weight:500;">
+                            <input type="radio" name="thumbnail_source" value="media" <?php checked($settings['thumbnail_source'] ?? 'bing', 'media'); ?>>
+                            3. 🖼️ Media yang Pernah Diupload Sebelumnya (Media Library)
                         </label>
                     </div>
-                    <div class="apcai-help" style="margin-top:4px;color:#166534;">
-                        Jika memilih <strong>Koleksi Foto Sendiri</strong>, silakan unggah minimal 10 foto di menu <strong>Pool Foto Sendiri</strong>. Sistem akan merotasikan foto tersebut secara otomatis bergantian tiap kali ada postingan baru.
+                    <div class="apcai-help" style="margin-top:8px;color:#166534;line-height:1.6;">
+                        - <strong>Bing Image</strong>: Mencari foto resolusi tinggi di web sesuai keyword, lalu mengompresnya ke WebP ringan (&plusmn;40-80 KB).<br>
+                        - <strong>Koleksi Upload Sendiri</strong>: Mengambil dari galeri khusus di menu <em>Pool Foto Sendiri</em> secara rotasi adil.<br>
+                        - <strong>Media Library Sebelumnya</strong>: Menggunakan kembali foto yang sudah pernah ada di WordPress Anda (dicocokkan dengan kata kunci topik / dirotasi acak). Jika belum ada media, otomatis fallback ke Bing.
                     </div>
                 </div>
             </div>
