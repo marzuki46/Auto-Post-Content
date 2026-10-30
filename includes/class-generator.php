@@ -172,78 +172,333 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
     }
 
     /**
+     * Dapatkan daftar postingan terkait dalam kategori yang sama sesuai hierarki funnel:
+     * - TOFU: link ke TOFU & MOFU (Dilarang ke BOFU)
+     * - MOFU: link ke MOFU & BOFU (Dilarang ke TOFU)
+     * - BOFU: hanya link ke sesama BOFU (Dilarang ke TOFU & MOFU)
+     */
+    public static function get_silo_posts_for_funnel(int $category_id, string $current_funnel = 'tofu', int $exclude_post_id = 0, int $limit = 2): array {
+        global $wpdb;
+        $current_funnel = strtolower(trim($current_funnel));
+        if (!in_array($current_funnel, ['tofu', 'mofu', 'bofu'], true)) {
+            $current_funnel = 'tofu';
+        }
+
+        // Tentukan funnel target yang diizinkan sesuai aturan ketat Silo
+        if ($current_funnel === 'tofu') {
+            $allowed_funnels = ['tofu', 'mofu'];
+        } elseif ($current_funnel === 'mofu') {
+            $allowed_funnels = ['mofu', 'bofu'];
+        } else {
+            // bofu
+            $allowed_funnels = ['bofu'];
+        }
+
+        $posts = [];
+        $t_rel = APCAI_DB::table_posts_meta();
+
+        // 1. Ambil dari tabel metadata plugin (apcai_posts_meta)
+        $in_clause = implode("','", array_map('esc_sql', $allowed_funnels));
+        $sql = $wpdb->prepare(
+            "SELECT r.post_id, r.funnel_stage, p.post_title 
+             FROM {$t_rel} r 
+             INNER JOIN {$wpdb->posts} p ON r.post_id = p.ID 
+             WHERE r.category_id = %d 
+               AND r.funnel_stage IN ('{$in_clause}')
+               AND p.post_status = 'publish' 
+               AND p.ID != %d
+             ORDER BY r.id DESC LIMIT %d",
+            $category_id,
+            $exclude_post_id,
+            $limit
+        );
+        $rows = $wpdb->get_results($sql);
+
+        if (!empty($rows)) {
+            foreach ($rows as $row) {
+                $permalink = get_permalink($row->post_id);
+                if ($permalink) {
+                    $posts[] = [
+                        'post_id' => (int) $row->post_id,
+                        'title'   => $row->post_title,
+                        'url'     => $permalink,
+                        'funnel'  => $row->funnel_stage,
+                    ];
+                }
+            }
+        }
+
+        // 2. Fallback: Jika artikel di apcai_posts_meta masih kurang dari limit, cari dari postingan WordPress kategori tsb
+        if (count($posts) < $limit) {
+            $existing_ids = array_merge([$exclude_post_id], wp_list_pluck($posts, 'post_id'));
+            $not_in_clause = implode(',', array_map('absint', $existing_ids));
+
+            $wp_posts = $wpdb->get_results($wpdb->prepare(
+                "SELECT p.ID, p.post_title 
+                 FROM {$wpdb->posts} p
+                 INNER JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+                 INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+                 WHERE tt.term_id = %d 
+                   AND p.post_type = 'post' 
+                   AND p.post_status = 'publish'
+                   AND p.ID NOT IN ({$not_in_clause})
+                 ORDER BY p.ID DESC LIMIT %d",
+                $category_id,
+                $limit * 2
+            ));
+
+            if (!empty($wp_posts)) {
+                foreach ($wp_posts as $wp_p) {
+                    $stage = get_post_meta($wp_p->ID, '_apcai_funnel_stage', true);
+                    if (empty($stage)) {
+                        // Jika tidak ada meta funnel, tentukan secara aman sesuai target
+                        $stage = ($current_funnel === 'bofu') ? 'bofu' : 'tofu';
+                    }
+                    if (in_array($stage, $allowed_funnels, true)) {
+                        $permalink = get_permalink($wp_p->ID);
+                        if ($permalink) {
+                            $posts[] = [
+                                'post_id' => (int) $wp_p->ID,
+                                'title'   => $wp_p->post_title,
+                                'url'     => $permalink,
+                                'funnel'  => $stage,
+                            ];
+                        }
+                    }
+                    if (count($posts) >= $limit) break;
+                }
+            }
+        }
+
+        return $posts;
+    }
+
+    /**
      * Dapatkan Konteks Internal Link & Target Landing Page (Money Page) Berdasarkan Kategori & Silo
      */
-    public static function get_internal_link_context($category_id, $current_funnel = 'tofu') {
+    public static function get_internal_link_context($category_id, $current_funnel = 'tofu', $exclude_post_id = 0) {
         global $wpdb;
+        $settings = get_option('apcai_settings', []);
+        $site_name = !empty($settings['site_name']) ? $settings['site_name'] : get_bloginfo('name');
+        $home_url  = trailingslashit(home_url());
+
+        $current_funnel = strtolower(trim($current_funnel));
+        if (!in_array($current_funnel, ['tofu', 'mofu', 'bofu'], true)) {
+            $current_funnel = 'tofu';
+        }
+
         $context_instruction = "";
         $target_landing_url = "";
         $chosen_anchor = "";
 
-        // 1. Ambil Target Landing Page (Money Page) untuk kategori ini
-        $t_landing = APCAI_DB::table_landing_pages();
-        $landing = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $t_landing WHERE category_id = %d AND status = 'active' ORDER BY RAND() LIMIT 1",
-            $category_id
-        ));
+        // 1. WAJIB LINK KE HOMEPAGE DENGAN NAMA BRAND (UNTUK SEMUA FUNNEL)
+        $context_instruction .= "PENTING - WAJIB LINK KE HOMEPAGE (SEMUA FUNNEL):\n" .
+            "- Anda WAJIB menyisipkan minimal 1 link ke Halaman Utama (Homepage) situs kami menggunakan anchor text nama brand kami: [{$site_name}]({$home_url})\n" .
+            "- Letakkan link ini secara natural di paragraf awal atau saat memperkenalkan entitas/layanan brand {$site_name}.\n\n";
 
-        // Fallback jika tidak ada landing page khusus kategori tsb, cari yang general
-        if (!$landing) {
-            $landing = $wpdb->get_row("SELECT * FROM $t_landing WHERE status = 'active' ORDER BY RAND() LIMIT 1");
+        // 2. ATURAN HIERARKI SILO FUNNEL
+        if ($current_funnel === 'tofu') {
+            $allowed_funnels = ['tofu', 'mofu'];
+            $funnel_rule = "ATURAN HIERARKI SILO (TAHAP SAAT INI: TOFU - TOP OF FUNNEL):\n" .
+                "- Artikel TOFU bertujuan edukasi dasar/awareness.\n" .
+                "- HANYA diizinkan memberi internal link ke artikel sesama TOFU atau artikel MOFU (pertimbangan lanjutan).\n" .
+                "- DILARANG KERAS menyisipkan link promosi jualan langsung / BOFU / Landing Page penawaran komersil!";
+        } elseif ($current_funnel === 'mofu') {
+            $allowed_funnels = ['mofu', 'bofu'];
+            $funnel_rule = "ATURAN HIERARKI SILO (TAHAP SAAT INI: MOFU - MIDDLE OF FUNNEL):\n" .
+                "- Artikel MOFU membahas komparasi, solusi, dan pertimbangan.\n" .
+                "- Diizinkan memberi link ke artikel sesama MOFU dan artikel BOFU / Landing Page penawaran.\n" .
+                "- DILARANG KERAS mundur memberi link ke artikel edukasi dasar TOFU!";
+        } else {
+            // bofu
+            $allowed_funnels = ['bofu'];
+            $funnel_rule = "ATURAN HIERARKI SILO (TAHAP SAAT INI: BOFU - BOTTOM OF FUNNEL):\n" .
+                "- Artikel BOFU berorientasi aksi keputusan pembelian/closing/rekomendasi produk.\n" .
+                "- HANYA diizinkan memberi link ke sesama artikel BOFU atau Landing Page penawaran resmi.\n" .
+                "- DILARANG KERAS menyisipkan link ke artikel TOFU maupun MOFU!";
         }
+        $context_instruction .= $funnel_rule . "\n\n";
 
-        if ($landing) {
-            $anchors = array_filter(array_map('trim', explode(',', $landing->anchor_keywords)));
-            if (!empty($anchors)) {
-                $chosen_anchor = $anchors[array_rand($anchors)];
-            } else {
-                $chosen_anchor = $landing->page_title ?: 'Lihat Penawaran Selengkapnya';
+        // 3. Ambil Target Landing Page (Money Page) HANYA untuk MOFU atau BOFU (TOFU DILARANG KE BOFU)
+        if ($current_funnel !== 'tofu') {
+            $t_landing = APCAI_DB::table_landing_pages();
+            $landing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $t_landing WHERE category_id = %d AND status = 'active' ORDER BY RAND() LIMIT 1",
+                $category_id
+            ));
+
+            if (!$landing) {
+                $landing = $wpdb->get_row("SELECT * FROM $t_landing WHERE status = 'active' ORDER BY RAND() LIMIT 1");
             }
-            $target_landing_url = esc_url_raw($landing->page_url);
 
-            $context_instruction .= "PENTING - TARGET LANDING PAGE (MONEY PAGE) INTERNAL LINK:\n" .
-                "- Anda WAJIB menyisipkan 1 link rekomendasi utama yang mengarah ke Landing Page produk/jasa resmi kami.\n" .
-                "- URL Tujuan: {$target_landing_url}\n" .
-                "- Teks Jangkar (Anchor Text): Wajib menggunakan variasi kata kunci berikut secara natural di dalam kalimat: [{$chosen_anchor}]({$target_landing_url})\n" .
-                "- Sisipkan link ini di bagian solusi, rekomendasi layanan, atau sebelum kesimpulan.\n\n";
+            if ($landing) {
+                $anchors = array_filter(array_map('trim', explode(',', $landing->anchor_keywords)));
+                if (!empty($anchors)) {
+                    $chosen_anchor = $anchors[array_rand($anchors)];
+                } else {
+                    $chosen_anchor = $landing->page_title ?: 'Lihat Penawaran Selengkapnya';
+                }
+                $target_landing_url = esc_url_raw($landing->page_url);
+
+                $context_instruction .= "TARGET LANDING PAGE RESMI (MONEY PAGE):\n" .
+                    "- Anda WAJIB menyisipkan 1 link rekomendasi penawaran/layanan ke Landing Page resmi kami:\n" .
+                    "- URL Tujuan: {$target_landing_url}\n" .
+                    "- Format Markdown Anchor: [{$chosen_anchor}]({$target_landing_url})\n" .
+                    "- Sisipkan secara mengalir di bagian rekomendasi solusi sebelum kesimpulan.\n\n";
+            }
         }
 
-        // 2. Ambil 1-2 Artikel Terkait dalam Silo Kategori yang Sama (Lateral / Down-Funneling Link)
-        $t_rel = APCAI_DB::table_posts_meta();
-        $silo_posts = $wpdb->get_results($wpdb->prepare(
-            "SELECT r.post_id, r.funnel_stage, p.post_title, p.guid 
-             FROM $t_rel r 
-             INNER JOIN {$wpdb->posts} p ON r.post_id = p.ID 
-             WHERE r.category_id = %d AND r.language = 'id' AND p.post_status = 'publish' 
-             ORDER BY r.id DESC LIMIT 5",
-            $category_id
-        ));
+        // 4. Ambil 1-2 Artikel Terkait dalam Silo Kategori yang Mematuhi Aturan Funnel
+        $silo_posts = self::get_silo_posts_for_funnel($category_id, $current_funnel, $exclude_post_id, 2);
 
         if (!empty($silo_posts)) {
             $links_str = "";
-            $count = 0;
             foreach ($silo_posts as $sp) {
-                $permalink = get_permalink($sp->post_id);
-                if ($permalink) {
-                    $links_str .= "- Judul: \"{$sp->post_title}\" (Tahap: {$sp->funnel_stage}) -> Link: {$permalink}\n";
-                    $count++;
-                    if ($count >= 2) break;
-                }
+                $links_str .= "- Judul: \"{$sp['title']}\" (Tahap: " . strtoupper($sp['funnel']) . ") -> Gunakan Markdown: [{$sp['title']}]({$sp['url']})\n";
             }
 
-            if (!empty($links_str)) {
-                $context_instruction .= "STRUKTUR SILO INTERNAL LINKING (KATEGORI SEJENIS):\n" .
-                    "- Anda WAJIB menyisipkan minimal 1 link kontekstual ke artikel bacaan terkait di bawah ini di dalam paragraf isi secara mengalir:\n" .
-                    $links_str .
-                    "- Gunakan anchor text kata kunci yang relevan dan natural (dilarang menggunakan kata 'klik disini').\n\n";
-            }
+            $context_instruction .= "STRUKTUR SILO ARTIKEL TERKAIT (WAJIB DISISIPKAN):\n" .
+                "- Sisipkan minimal 1 link kontekstual ke artikel bacaan terkait di bawah ini di dalam paragraf isi secara mengalir:\n" .
+                $links_str .
+                "- Gunakan anchor text kata kunci yang relevan dan natural (dilarang menggunakan kata 'klik disini').\n\n";
         }
 
         return [
-            'instruction' => $context_instruction,
-            'landing_url' => $target_landing_url,
-            'landing_anchor' => $chosen_anchor,
+            'instruction'     => $context_instruction,
+            'home_url'        => $home_url,
+            'brand_name'      => $site_name,
+            'current_funnel'  => $current_funnel,
+            'allowed_funnels' => $allowed_funnels,
+            'silo_posts'      => $silo_posts,
+            'landing_url'     => $target_landing_url,
+            'landing_anchor'  => $chosen_anchor,
         ];
+    }
+
+    /**
+     * Memastikan (Enforce) 100% Seluruh Aturan Internal Link Terpenuhi Tanpa Bergantung Penuh pada Ketaatan AI:
+     * 1. Wajib ada link ke Home dengan nama brand di paragraf pembuka.
+     * 2. Wajib ada link ke artikel silo yang memenuhi aturan funnel (TOFU/MOFU/BOFU).
+     * 3. Wajib ada link ke Landing Page jika MOFU/BOFU.
+     * 4. Membersihkan (Sanitasi) link yang melanggar funnel (misal TOFU link ke BOFU, atau MOFU link ke TOFU).
+     */
+    public static function enforce_internal_links(string $content_md, array $linking_data, string $current_funnel = 'tofu'): string {
+        if (empty($content_md)) return $content_md;
+
+        $home_url   = $linking_data['home_url'] ?? trailingslashit(home_url());
+        $brand_name = trim($linking_data['brand_name'] ?? get_bloginfo('name'));
+        $silo_posts = $linking_data['silo_posts'] ?? [];
+        $landing_url = $linking_data['landing_url'] ?? '';
+        $landing_anchor = $linking_data['landing_anchor'] ?? '';
+
+        $clean_home = rtrim($home_url, '/');
+
+        // ==========================================
+        // 1. ENFORCE LINK KE HOMEPAGE DENGAN NAMA BRAND
+        // ==========================================
+        $has_home_link = preg_match('#\[[^\]]+\]\(' . preg_quote($clean_home, '#') . '/?\)#i', $content_md);
+
+        if (!$has_home_link && !empty($brand_name)) {
+            $brand_link_md = "[{$brand_name}]({$clean_home}/)";
+            $replaced = false;
+
+            // Cari nama brand di paragraf yang bukan heading dan bukan bagian dari markdown link lain
+            $lines = explode("\n", $content_md);
+            foreach ($lines as &$line) {
+                $trimmed = trim($line);
+                if (empty($trimmed) || str_starts_with($trimmed, '#') || str_starts_with($trimmed, '|')) {
+                    continue;
+                }
+
+                // Cek jika baris mengandung nama brand dan belum berupa [Brand](...)
+                if (stripos($line, $brand_name) !== false && !preg_match('#\[[^\]]*' . preg_quote($brand_name, '#') . '[^\]]*\]\([^\)]+\)#i', $line)) {
+                    $line = preg_replace('/' . preg_quote($brand_name, '/') . '/i', $brand_link_md, $line, 1);
+                    $replaced = true;
+                    break;
+                }
+            }
+            unset($line);
+            $content_md = implode("\n", $lines);
+
+            // Jika nama brand belum ada di teks paragraf sama sekali, sisipkan di akhir intro pertama
+            if (!$replaced) {
+                $lines = explode("\n", $content_md);
+                foreach ($lines as &$line) {
+                    $trimmed = trim($line);
+                    if (!empty($trimmed) && !str_starts_with($trimmed, '#') && !str_starts_with($trimmed, '|') && !str_starts_with($trimmed, '>')) {
+                        $line .= " Melalui dedikasi dan layanan profesional dari {$brand_link_md}, kami selalu berkomitmen menyajikan wawasan akurat dan solusi terbaik.";
+                        $replaced = true;
+                        break;
+                    }
+                }
+                unset($line);
+                $content_md = implode("\n", $lines);
+            }
+        }
+
+        // ==========================================
+        // 2. ENFORCE ARTIKEL SILO TERKAIT (SESUAI FUNNEL)
+        // ==========================================
+        if (!empty($silo_posts) && is_array($silo_posts)) {
+            foreach ($silo_posts as $sp) {
+                $sp_url = $sp['url'] ?? '';
+                if (empty($sp_url)) continue;
+
+                $clean_sp_url = rtrim($sp_url, '/');
+                $has_sp_link = preg_match('#\(' . preg_quote($clean_sp_url, '#') . '/?\)#i', $content_md);
+
+                // Jika AI belum memasukkan link artikel terkait ini, sisipkan callout "Baca Juga" profesional
+                if (!$has_sp_link) {
+                    $callout = "\n\n> **Baca Juga:** [{$sp['title']}]({$clean_sp_url}/)\n\n";
+                    
+                    // Tempatkan setelah sub-heading H2 pertama atau kedua
+                    if (preg_match('/(##\s+[^\n]+\n+([^\n]+\n+){1,3})/m', $content_md, $matches)) {
+                        $content_md = preg_replace('/' . preg_quote($matches[1], '/') . '/', $matches[1] . $callout, $content_md, 1);
+                    } else {
+                        // Fallback letakkan di tengah artikel
+                        $content_md .= $callout;
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 3. ENFORCE TARGET LANDING PAGE (HANYA MOFU & BOFU)
+        // ==========================================
+        if ($current_funnel !== 'tofu' && !empty($landing_url)) {
+            $clean_lp = rtrim($landing_url, '/');
+            $has_lp_link = preg_match('#\(' . preg_quote($clean_lp, '#') . '/?\)#i', $content_md);
+
+            if (!$has_lp_link) {
+                $anchor = !empty($landing_anchor) ? $landing_anchor : 'kunjungi halaman layanan resmi';
+                $lp_link_md = "[{$anchor}]({$clean_lp}/)";
+
+                // Cek apakah anchor keywords ada di dalam teks
+                if (stripos($content_md, $anchor) !== false && !preg_match('#\[[^\]]*' . preg_quote($anchor, '#') . '[^\]]*\]\([^\)]+\)#i', $content_md)) {
+                    $content_md = preg_replace('/' . preg_quote($anchor, '/') . '/i', $lp_link_md, $content_md, 1);
+                } else {
+                    // Sisipkan sebelum heading H2 terakhir
+                    $cta_box = "\n\nUntuk informasi pemesanan, paket penawaran, dan detail lebih lanjut, {$lp_link_md}.\n\n";
+                    $last_h2_pos = strrpos($content_md, '## ');
+                    if ($last_h2_pos !== false) {
+                        $content_md = substr_replace($content_md, $cta_box, $last_h2_pos, 0);
+                    } else {
+                        $content_md .= $cta_box;
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 4. STRICT FUNNEL ISOLATION (CLEAN-UP PELANGGARAN)
+        // ==========================================
+        // A. Jika TOFU: Bersihkan link apapun ke Landing Page / BOFU
+        if ($current_funnel === 'tofu' && !empty($landing_url)) {
+            $clean_lp = rtrim($landing_url, '/');
+            $content_md = preg_replace('#\[(.*?)\]\(' . preg_quote($clean_lp, '#') . '/?\)#i', '$1', $content_md);
+        }
+
+        return $content_md;
     }
 
     /**
@@ -395,6 +650,8 @@ PANDUAN PENGEMBANGAN KONTEN:
         // Hapus link fiktif example.com jika model tidak sengaja memunculkannya
         if (is_array($parsed) && !empty($parsed['content_md'])) {
             $parsed['content_md'] = preg_replace('/\[(.*?)\]\(https?:\/\/(?:www\.)?example\.com[^\)]*\)/i', '$1', $parsed['content_md']);
+            // Enforce 100% Seluruh Aturan Internal Links Silo & Funneling
+            $parsed['content_md'] = self::enforce_internal_links($parsed['content_md'], $linking, $funnel_stage);
         }
 
         return $parsed;
@@ -655,7 +912,22 @@ CONTENT (MARKDOWN):
     private static function format_inline_markdown($text) {
         $text = preg_replace('/\*\*(.*?)\*\*/', '<strong>$1</strong>', $text);
         $text = preg_replace('/\*([^\*]+)\*/', '<em>$1</em>', $text);
-        $text = preg_replace('/\[(.*?)\]\((.*?)\)/', '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>', $text);
+
+        // Render Markdown Links [text](url) - bedakan internal link vs external link
+        $home_host = wp_parse_url(home_url(), PHP_URL_HOST);
+        $text = preg_replace_callback('/\[(.*?)\]\((.*?)\)/', function ($m) use ($home_host) {
+            $anchor   = $m[1];
+            $url      = esc_url($m[2]);
+            $url_host = wp_parse_url($url, PHP_URL_HOST);
+
+            // Jika internal link (ke host domain sendiri atau link relatif), jangan pakai target="_blank"
+            if (empty($url_host) || $url_host === $home_host) {
+                return '<a href="' . $url . '">' . $anchor . '</a>';
+            }
+            // External link (seperti WhatsApp, link luar) gunakan target="_blank" rel="noopener noreferrer"
+            return '<a href="' . $url . '" target="_blank" rel="noopener noreferrer">' . $anchor . '</a>';
+        }, $text);
+
         return $text;
     }
 
@@ -671,17 +943,27 @@ CONTENT (MARKDOWN):
             $post_status = $settings['post_status'] ?? 'publish';
         }
 
+        $cat_id = absint($category_id ?: ($settings['post_category'] ?? 1));
+        $funnel_stage = strtolower(trim($funnel_stage));
+        if (!in_array($funnel_stage, ['tofu', 'mofu', 'bofu'], true)) {
+            $funnel_stage = 'tofu';
+        }
+
         $title = sanitize_text_field($data['title'] ?? 'Untitled Article');
         if ($language === 'id') {
             $title = self::sanitize_indonesian_title($title);
         }
-        $slug  = sanitize_title($data['slug'] ?? $title);
+        $slug = sanitize_title($data['slug'] ?? $title);
+
         $raw_md = $data['content_md'] ?? '';
+        // Enforce internal link silo dan home brand link sebelum render ke HTML
+        $linking = self::get_internal_link_context($cat_id, $funnel_stage);
+        $raw_md = self::enforce_internal_links($raw_md, $linking, $funnel_stage);
+
         $html_content = self::markdown_to_html($raw_md);
         $excerpt = sanitize_textarea_field($data['excerpt'] ?? '');
 
         $author_id = absint($settings['post_author'] ?? 1);
-        $cat_id    = absint($category_id ?: ($settings['post_category'] ?? 1));
 
         $postarr = [
             'post_title'    => $title,

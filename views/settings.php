@@ -192,9 +192,48 @@
             </div>
         </div>
 
-        <!-- 5. Instant Indexing (IndexNow & Google WebSub) -->
+        <!-- 5. Arsitektur Silo & Internal Linking Otomatis -->
         <div class="apcai-card">
-            <h2>5. Instant Indexing Otomatis (IndexNow & Google WebSub)</h2>
+            <h2>5. Arsitektur Silo & Internal Linking Otomatis (Anti-Bocor Funnel)</h2>
+            <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
+                Mengatur distribusi link internal kontekstual antar artikel dan ke halaman utama secara terstruktur untuk melipatgandakan otoritas domain (Link Juice) dan menjaga alur psikologi pembaca dari edukasi hingga pembelian.
+            </p>
+
+            <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
+                <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;font-size:14px;">
+                    <input type="checkbox" name="enable_internal_links" id="enable_internal_links" value="1" <?php checked($settings['enable_internal_links'] ?? '1', '1'); ?>>
+                    🔗 Aktifkan Otomatisasi Arsitektur Silo & Internal Link Berjenjang
+                </label>
+                <div class="apcai-help" style="margin-top:8px;color:#1e3a8a;line-height:1.6;">
+                    Sistem secara otomatis menerapkan 4 hukum ketat Silo SEO di setiap artikel yang diposting:
+                    <ul style="margin:6px 0 0 18px;list-style:disc;">
+                        <li><strong>Wajib Link Home Brand (Semua Funnel)</strong>: Setiap artikel (TOFU, MOFU, BOFU) wajib menyisipkan link ke Halaman Utama dengan anchor text nama Brand (<code><?php echo esc_html(!empty($settings['site_name']) ? $settings['site_name'] : get_bloginfo('name')); ?></code>) di paragraf pembuka.</li>
+                        <li><strong>TOFU (Top of Funnel - Edukasi)</strong>: Di-link ke artikel sesama <strong>TOFU</strong> dan <strong>MOFU</strong>. <span style="color:#b91c1c;font-weight:600;">Dilarang keras link ke BOFU / Halaman Jualan</span> (karena audiens belum siap beli).</li>
+                        <li><strong>MOFU (Middle of Funnel - Pertimbangan)</strong>: Di-link ke artikel <strong>MOFU</strong> dan <strong>BOFU</strong> (Target Landing Page). <span style="color:#b91c1c;font-weight:600;">Dilarang mundur link ke TOFU</span>.</li>
+                        <li><strong>BOFU (Bottom of Funnel - Keputusan Beli)</strong>: <span style="color:#15803d;font-weight:600;">HANYA di-link ke sesama artikel BOFU atau Landing Page resmi</span>. <span style="color:#b91c1c;font-weight:600;">Dilarang link ke TOFU & MOFU</span> (agar fokus closing 100%).</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
+                <div style="background:#f8fafc;padding:14px;border-radius:6px;border:1px solid #e2e8f0;">
+                    <label style="font-weight:600;color:#1e293b;display:block;margin-bottom:6px;">Target Link Halaman Utama (Homepage)</label>
+                    <input type="text" class="apcai-input" value="<?php echo esc_attr(home_url('/')); ?>" readonly style="background:#f1f5f9;color:#64748b;">
+                    <div class="apcai-help">Anchor text otomatis menggunakan nama brand resmi: <strong><?php echo esc_html(!empty($settings['site_name']) ? $settings['site_name'] : get_bloginfo('name')); ?></strong>.</div>
+                </div>
+
+                <div style="background:#f8fafc;padding:14px;border-radius:6px;border:1px solid #e2e8f0;">
+                    <label style="font-weight:600;color:#1e293b;display:block;margin-bottom:6px;">Status Target Landing Page (Money Pages)</label>
+                    <div style="font-size:13px;color:#475569;margin-top:6px;line-height:1.5;">
+                        Dikelola di menu <strong>Target Landing Page</strong> di bilah navigasi samping. Hanya artikel MOFU dan BOFU yang dialirkan ke Money Page.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Instant Indexing (IndexNow & Google WebSub) -->
+        <div class="apcai-card">
+            <h2>6. Instant Indexing Otomatis (IndexNow, Google WebSub, & NERD Indexing)</h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 Secara otomatis mengirimkan sinyal ping instan ke bot mesin pencari setiap kali ada artikel yang baru terbit, tanpa perlu submit manual satu per satu ke Search Console.
             </p>
@@ -251,9 +290,9 @@
             </div>
         </div>
 
-        <!-- 6. Integrasi Auto-Update GitHub -->
+        <!-- 7. Integrasi Auto-Update GitHub -->
         <div class="apcai-card">
-            <h2>6. Auto-Update via GitHub Release</h2>
+            <h2>7. Auto-Update via GitHub Release</h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 Aktifkan update otomatis tanpa perlu upload ZIP manual. WordPress akan mendownload release terbaru langsung dari repository GitHub Anda.
             </p>
