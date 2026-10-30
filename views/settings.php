@@ -114,7 +114,7 @@
 
             <div style="background:#f0fdf4;padding:16px;border-radius:6px;border:1px solid #bbf7d0;margin-top:15px;">
                 <label style="display:flex;align-items:center;gap:10px;font-weight:600;color:#166534;cursor:pointer;">
-                    <input type="checkbox" name="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>
+                    <input type="checkbox" name="auto_thumbnail" id="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>
                     🖼️ Aktifkan Auto Thumbnail Kompresi WebP & Otomatis Lengkapi SEO (Alt, Title, Desc)
                 </label>
                 <div class="apcai-help" style="margin-top:6px;color:#15803d;">
@@ -240,7 +240,7 @@
 
             <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
                 <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;font-size:14px;">
-                    <input type="checkbox" name="enable_instant_indexing" value="1" <?php checked($settings['enable_instant_indexing'] ?? '1', '1'); ?>>
+                    <input type="checkbox" name="enable_instant_indexing" id="enable_instant_indexing" value="1" <?php checked($settings['enable_instant_indexing'] ?? '1', '1'); ?>>
                     ⚡ Aktifkan Auto-Ping IndexNow (Bing, Yandex, Naver), Google WebSub Hub, & NERD Indexing
                 </label>
                 <div class="apcai-help" style="margin-top:6px;color:#1e3a8a;">

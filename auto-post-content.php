@@ -3,7 +3,7 @@
  * Plugin Name: Auto Post Content AI & Topic Generator
  * Plugin URI: https://github.com/marzuki46/Auto-Post-Content
  * Description: Plugin WordPress canggih untuk riset topik AI, auto-generate artikel SEO mendalam (1 bahasa atau 2 bahasa ID & EN), integrasi 9Router/OpenAI, Entity Keywords, Custom CTA WhatsApp/Link, dan penjadwalan otomatis (jam terjadwal atau random harian).
- * Version: 1.1.6
+ * Version: 1.1.7
  * Author: Marzuki Team
  * Text Domain: auto-post-content
  * Domain Path: /languages
@@ -25,7 +25,7 @@ if (version_compare(PHP_VERSION, '8.3.0', '<')) {
     return;
 }
 
-define('APCAI_VERSION', '1.1.6');
+define('APCAI_VERSION', '1.1.7');
 define('APCAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('APCAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('APCAI_PLUGIN_FILE', __FILE__);

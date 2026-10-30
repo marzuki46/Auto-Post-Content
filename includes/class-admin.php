@@ -237,9 +237,10 @@ class APCAI_Admin {
             }
         }
 
-        $current['schedule_enabled'] = !empty($input['schedule_enabled']) ? 1 : 0;
-        $current['enable_internal_links'] = !empty($input['enable_internal_links']) ? 1 : 0;
-        $current['enable_instant_indexing'] = !empty($input['enable_instant_indexing']) ? 1 : 0;
+        $current['schedule_enabled'] = !empty($input['schedule_enabled']) ? '1' : '0';
+        $current['auto_thumbnail'] = !empty($input['auto_thumbnail']) ? '1' : '0';
+        $current['enable_internal_links'] = !empty($input['enable_internal_links']) ? '1' : '0';
+        $current['enable_instant_indexing'] = !empty($input['enable_instant_indexing']) ? '1' : '0';
 
         // Sinkronisasi otomatis dengan plugin nerd-for-wp jika diset
         if (isset($input['nerd_email'])) {

@@ -56,7 +56,7 @@ class APCAI_Indexer {
 
         $settings = get_option('apcai_settings', []);
         $enable_instant_index = $settings['enable_instant_indexing'] ?? '1';
-        if ($enable_instant_index !== '1') return;
+        if (empty($enable_instant_index) || $enable_instant_index === '0' || $enable_instant_index === 0) return;
 
         // Hindari double ping dalam hitungan detik
         $already_pinged = get_post_meta($post_id, '_apcai_pinged_indexing', true);
