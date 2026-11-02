@@ -102,9 +102,12 @@
                 </div>
             </div>
 
-            <div style="margin-top:20px;">
+            <div style="margin-top:20px;display:flex;align-items:center;gap:12px;">
                 <button type="submit" class="apcai-btn apcai-btn-primary" style="font-size:14px;padding:10px 24px;">
                     Simpan Pengaturan Jadwal
+                </button>
+                <button type="button" id="btn-trigger-cron" class="apcai-btn apcai-btn-success" style="font-size:14px;padding:10px 20px;">
+                    🚀 Jalankan 1 Post Sekarang (Test Scheduler)
                 </button>
             </div>
         </div>

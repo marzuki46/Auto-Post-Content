@@ -12,8 +12,18 @@ class APCAI_Scheduler {
         add_action(self::CRON_HOOK_DAILY, [__CLASS__, 'run_daily_planner']);
         add_action(self::CRON_HOOK_EXECUTE, [__CLASS__, 'run_scheduled_posting']);
 
+        // Pastikan daily planner cron terdaftar
         if (!wp_next_scheduled(self::CRON_HOOK_DAILY)) {
             wp_schedule_event(time(), 'daily', self::CRON_HOOK_DAILY);
+        }
+
+        // Pastikan executor cron selalu aktif jika setting penjadwalan diaktifkan
+        $settings = get_option('apcai_settings', []);
+        $enabled = $settings['schedule_enabled'] ?? '0';
+        if (!empty($enabled) && $enabled !== '0' && $enabled !== 0) {
+            if (!wp_next_scheduled(self::CRON_HOOK_EXECUTE)) {
+                wp_schedule_event(time() + 60, 'apcai_ten_minutes', self::CRON_HOOK_EXECUTE);
+            }
         }
     }
 
@@ -34,7 +44,9 @@ class APCAI_Scheduler {
         $settings = get_option('apcai_settings', []);
         wp_clear_scheduled_hook(self::CRON_HOOK_EXECUTE);
 
-        if (empty($settings['schedule_enabled'])) {
+        $enabled = $settings['schedule_enabled'] ?? '0';
+        if (empty($enabled) || $enabled === '0' || $enabled === 0) {
+            update_option('apcai_scheduled_slots_today', []);
             return;
         }
 
@@ -73,18 +85,18 @@ class APCAI_Scheduler {
             }
 
             // Jika semua slot hari ini sudah terlewat karena scheduler baru diaktifkan sore/malam,
-            // buatkan minimal 1 slot segera dalam 10-15 menit ke depan agar hari ini tidak kosong
+            // buatkan minimal 1 slot segera dalam 5-15 menit ke depan agar hari ini tidak kosong
             if (empty($timestamps)) {
                 $timestamps[] = $now + rand(300, 900);
             }
         }
 
+        sort($timestamps);
         update_option('apcai_scheduled_slots_today', $timestamps);
         update_option('apcai_slots_generated_date', date_i18n('Y-m-d', $now));
 
-        if (!wp_next_scheduled(self::CRON_HOOK_EXECUTE)) {
-            wp_schedule_event(time() + 60, 'apcai_ten_minutes', self::CRON_HOOK_EXECUTE);
-        }
+        // Daftarkan event cron 10 menitan
+        wp_schedule_event(time() + 60, 'apcai_ten_minutes', self::CRON_HOOK_EXECUTE);
     }
 
     public static function run_daily_planner() {
@@ -110,7 +122,8 @@ class APCAI_Scheduler {
 
     public static function run_scheduled_posting() {
         $settings = get_option('apcai_settings', []);
-        if (empty($settings['schedule_enabled'])) {
+        $enabled = $settings['schedule_enabled'] ?? '0';
+        if (empty($enabled) || $enabled === '0' || $enabled === 0) {
             return;
         }
 
