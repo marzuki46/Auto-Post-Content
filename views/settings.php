@@ -112,6 +112,21 @@
                 </div>
             </div>
 
+            <!-- Native MCP Engine Status -->
+            <div style="background:#f0fdfa;padding:16px;border-radius:6px;border:1px solid #99f6e4;margin-top:15px;">
+                <h3 style="margin-top:0;font-size:14px;color:#0f766e;display:flex;align-items:center;gap:6px;">
+                    🧠 Native MCP Cognitive Engine (Aktif Otomatis)
+                </h3>
+                <div style="font-size:13px;color:#134e4a;line-height:1.6;">
+                    Plugin telah terintegrasi dengan 3 modul Native Model Context Protocol (MCP) tanpa perlu server eksternal:
+                    <ul style="margin:6px 0 0 18px;list-style:disc;">
+                        <li><strong>Time Server MCP</strong>: Sinkronisasi waktu real-time (<?php echo esc_html(date_i18n('d F Y H:i')); ?>) mengunci tahun aktif agar AI tidak halusinasi tahun lampau.</li>
+                        <li><strong>Memory Server MCP</strong>: Membaca riwayat topik dan keyword kategori agar artikel baru memiliki sudut pandang segar tanpa duplikasi.</li>
+                        <li><strong>Sequential Thinking MCP</strong>: Perencanaan tugas 2 tahap (Tahap 1: Planning Blueprint Outline & Pain Points, Tahap 2: Eksekusi Penulisan Artikel).</li>
+                    </ul>
+                </div>
+            </div>
+
             <div style="background:#f0fdf4;padding:16px;border-radius:6px;border:1px solid #bbf7d0;margin-top:15px;">
                 <label style="display:flex;align-items:center;gap:10px;font-weight:600;color:#166534;cursor:pointer;">
                     <input type="checkbox" name="auto_thumbnail" id="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>

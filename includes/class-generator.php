@@ -64,6 +64,12 @@ class APCAI_Generator {
         if (!empty($settings['audience']))    $brand_ctx[] = "Target audience: " . $settings['audience'];
         if (!empty($settings['brand_voice'])) $brand_ctx[] = "Brand voice: " . $settings['brand_voice'];
 
+        // Inject Native Time Context
+        if (class_exists('APCAI_Agent_Engine')) {
+            $time_ctx = APCAI_Agent_Engine::get_time_context();
+            $brand_ctx[] = $time_ctx['prompt'];
+        }
+
         // Cek Bahan Pembuatan Konten / Data Perusahaan
         $knowledge_data = trim($settings['knowledge_data'] ?? '');
         $knowledge_date = trim($settings['knowledge_updated_date'] ?? date_i18n('d F Y'));
@@ -548,12 +554,41 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
         $audience    = !empty($settings['audience']) ? $settings['audience'] : '';
         $brand_voice = !empty($settings['brand_voice']) ? $settings['brand_voice'] : '';
 
+        // -----------------------------------------------------------------
+        // ADOPSI MCP ENGINE: Time Server, Memory Server & Sequential Thinking
+        // -----------------------------------------------------------------
+        $time_ctx = class_exists('APCAI_Agent_Engine') ? APCAI_Agent_Engine::get_time_context() : ['prompt' => '', 'year' => date('Y')];
+        $mem_ctx  = class_exists('APCAI_Agent_Engine') ? APCAI_Agent_Engine::get_memory_context($category_id, $input_topic) : ['prompt' => ''];
+
+        // Eksekusi Sequential Thinking (Tahap 1: Planning Blueprint)
+        $blueprint_instruction = "";
+        if (class_exists('APCAI_Agent_Engine')) {
+            $blueprint_res = APCAI_Agent_Engine::plan_article_blueprint(
+                $input_topic,
+                $category_id,
+                $funnel_stage,
+                [
+                    'site_name'     => $site_name,
+                    'cat_name'      => $cat_name,
+                    'time_prompt'   => $time_ctx['prompt'],
+                    'memory_prompt' => $mem_ctx['prompt'],
+                ]
+            );
+
+            if (!is_wp_error($blueprint_res) && is_array($blueprint_res)) {
+                $blueprint_instruction = APCAI_Agent_Engine::format_blueprint_instruction($blueprint_res);
+            }
+        }
+
         $brand_profile_prompt = "PROFIL IDENTITAS BRAND & PENULIS:
 - Nama Brand / Bisnis: {$site_name}
 - Niche Utama: {$niche}
 - Target Audiens Spesifik: {$audience}
 - Brand Voice / Nada Penulisan: {$brand_voice}
-- Website Resmi: {$site_domain} ({$site_url})";
+- Website Resmi: {$site_domain} ({$site_url})
+
+" . (!empty($time_ctx['prompt']) ? "{$time_ctx['prompt']}\n\n" : "") . "
+" . (!empty($mem_ctx['prompt']) ? "{$mem_ctx['prompt']}\n\n" : "");
 
         // Cek Bahan Pembuatan Konten / Basis Data Perusahaan
         $knowledge_data = trim($settings['knowledge_data'] ?? '');
@@ -607,6 +642,7 @@ Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau ma
 " . substr($input_topic, 0, 10000) . "
 \"\"\"
 
+" . (!empty($blueprint_instruction) ? "{$blueprint_instruction}\n\n" : "") . "
 " . (!empty($knowledge_prompt_block) ? "{$knowledge_prompt_block}\n\n" : "") . "PANDUAN RISET ENTITY & KEYWORD:
 \"\"\"
 " . substr($keyword_prompt, 0, 3000) . "
