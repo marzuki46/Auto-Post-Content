@@ -274,7 +274,7 @@ class APCAI_Admin {
         }
 
         // HANYA update boolean keys jika kuncinya dikirim oleh form yang bersangkutan
-        $boolean_keys = ['schedule_enabled', 'auto_research_topics', 'auto_thumbnail', 'enable_internal_links', 'enable_instant_indexing'];
+        $boolean_keys = ['schedule_enabled', 'auto_research_topics', 'auto_thumbnail', 'enable_internal_links', 'enable_instant_indexing', 'enable_cognitive_engine'];
         foreach ($boolean_keys as $b_key) {
             if (array_key_exists($b_key, $input)) {
                 $current[$b_key] = (!empty($input[$b_key]) && $input[$b_key] !== '0') ? '1' : '0';

@@ -287,39 +287,59 @@ class APCAI_Scheduler {
 
         $secondary_post_id = 0;
 
-        // 5. Dual Language Mode (English Adaptation)
-        if ($lang_mode === 'dual') {
-            $target_second_lang = ($default_lang === 'id') ? 'en' : 'id';
-            
-            if ($target_second_lang === 'en') {
-                $en_res = APCAI_Generator::generate_english_adaptation(
+        // 5. Multi-Language Adaptation Mode (Single / Dual / Tri)
+        $adapted_ids = [];
+
+        if ($lang_mode === 'dual' || $lang_mode === 'tri') {
+            $all_langs = ['id', 'ms', 'en'];
+            $target_langs = [];
+
+            if ($lang_mode === 'tri') {
+                // Rilis 3 bahasa sekaligus (bahasa utama + 2 bahasa pelengkap)
+                $target_langs = array_values(array_diff($all_langs, [$default_lang]));
+            } else {
+                // Mode 2 Bahasa (Dual)
+                $sec_pref = $settings['secondary_lang'] ?? (($default_lang === 'id') ? 'en' : 'id');
+                if ($sec_pref === $default_lang) {
+                    $available = array_values(array_diff($all_langs, [$default_lang]));
+                    $sec_pref = $available[0] ?? 'en';
+                }
+                $target_langs = [$sec_pref];
+            }
+
+            foreach ($target_langs as $t_lang) {
+                $adapt_res = APCAI_Generator::generate_adaptation(
+                    $t_lang,
                     $primary_res['title'] ?? $topic->title,
                     $primary_res['content_md'] ?? '',
                     $primary_res['excerpt'] ?? '',
                     $primary_res['keywords'] ?? []
                 );
 
-                if (!is_wp_error($en_res)) {
-                    $sec_id = APCAI_Generator::save_article($en_res, 'en', $post_id_primary, $topic->id, '', $cat_id, $funnel_stage);
+                if (!is_wp_error($adapt_res)) {
+                    $sec_id = APCAI_Generator::save_article($adapt_res, $t_lang, $post_id_primary, $topic->id, '', $cat_id, $funnel_stage);
                     if (!is_wp_error($sec_id)) {
-                        $secondary_post_id = $sec_id;
+                        $adapted_ids[$t_lang] = $sec_id;
                     }
                 }
             }
         }
 
+        $secondary_post_id = !empty($adapted_ids) ? reset($adapted_ids) : 0;
+        $adapted_summary = !empty($adapted_ids) ? ' & Adaptasi [' . implode(', ', array_map(fn($k, $v) => strtoupper($k) . " #{$v}", array_keys($adapted_ids), $adapted_ids)) . ']' : '';
+
         // Catat Log Sukses
         $wpdb->insert($table_logs, [
             'action_type' => 'scheduled_post',
             'status'      => 'success',
-            'message'     => "Berhasil posting artikel #{$post_id_primary} ({$default_lang} | Kategori #{$cat_id} | Funnel: " . strtoupper($funnel_stage) . ")" . ($secondary_post_id ? " & EN #{$secondary_post_id}" : ""),
+            'message'     => "Berhasil posting artikel #{$post_id_primary} ({$default_lang} | Kategori #{$cat_id} | Funnel: " . strtoupper($funnel_stage) . ")" . $adapted_summary,
             'data'        => wp_json_encode([
                 'topic_id'         => $topic->id,
                 'topic_title'      => $topic->title,
                 'category_id'      => $cat_id,
                 'funnel_stage'     => $funnel_stage,
                 'primary_post_id'  => $post_id_primary,
-                'secondary_post_id'=> $secondary_post_id,
+                'adapted_posts'    => $adapted_ids,
                 'title'            => $primary_res['title'] ?? '',
             ]),
             'created_at'  => current_time('mysql'),

@@ -43,24 +43,35 @@
         <!-- 2. Pengaturan Bahasa & Multi-Language -->
         <div class="apcai-card">
             <h2>2. Bahasa & Mode Multi-Language</h2>
-            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
+            <div style="display:grid;grid-template-columns: 1fr 1fr 1fr;gap:20px;">
                 <div class="apcai-form-group">
                     <label>Mode Bahasa</label>
-                    <select name="lang_mode" class="apcai-select">
-                        <option value="dual" <?php selected($settings['lang_mode'] ?? '', 'dual'); ?>>2 Bahasa (Bilingual: ID & EN/MS Otomatis)</option>
-                        <option value="single" <?php selected($settings['lang_mode'] ?? '', 'single'); ?>>1 Bahasa Saja</option>
+                    <select name="lang_mode" id="setting_lang_mode" class="apcai-select">
+                        <option value="single" <?php selected($settings['lang_mode'] ?? 'dual', 'single'); ?>>1 Bahasa (Hanya Bahasa Utama)</option>
+                        <option value="dual" <?php selected($settings['lang_mode'] ?? 'dual', 'dual'); ?>>2 Bahasa (Bilingual: Utama + 1 Bahasa Adaptasi)</option>
+                        <option value="tri" <?php selected($settings['lang_mode'] ?? 'dual', 'tri'); ?>>3 Bahasa Sekaligus (Trilingual: ID + MS + EN)</option>
                     </select>
-                    <div class="apcai-help">Jika 2 bahasa diaktifkan, AI akan menulis artikel utama lalu mengadaptasinya secara organik ke bahasa kedua.</div>
+                    <div class="apcai-help">Mode 3 Bahasa otomatis menerbitkan versi Indonesia, Melayu, dan Inggris secara simultan.</div>
                 </div>
 
                 <div class="apcai-form-group">
-                    <label>Bahasa Utama / Default (Primary Language)</label>
+                    <label>Bahasa Utama (Primary)</label>
                     <select name="default_lang" class="apcai-select">
-                        <option value="id" <?php selected($settings['default_lang'] ?? '', 'id'); ?>>🇮🇩 Bahasa Indonesia (ID) - Default</option>
-                        <option value="ms" <?php selected($settings['default_lang'] ?? '', 'ms'); ?>>🇲🇾 Bahasa Melayu (MS - Malaysia/Brunei/Singapura)</option>
-                        <option value="en" <?php selected($settings['default_lang'] ?? '', 'en'); ?>>🇬🇧 English (EN)</option>
+                        <option value="id" <?php selected($settings['default_lang'] ?? 'id', 'id'); ?>>🇮🇩 Bahasa Indonesia (ID) - Default</option>
+                        <option value="ms" <?php selected($settings['default_lang'] ?? 'id', 'ms'); ?>>🇲🇾 Bahasa Melayu (MS - Malaysia/Brunei/SG)</option>
+                        <option value="en" <?php selected($settings['default_lang'] ?? 'id', 'en'); ?>>🇬🇧 English (EN)</option>
                     </select>
-                    <div class="apcai-help">Pilih bahasa pertama yang dieksekusi saat scheduler berjalan.</div>
+                    <div class="apcai-help">Bahasa pertama yang ditulis oleh AI sebagai acuan konten.</div>
+                </div>
+
+                <div class="apcai-form-group">
+                    <label>Bahasa Kedua Target (Jika Mode 2 Bahasa)</label>
+                    <select name="secondary_lang" class="apcai-select">
+                        <option value="en" <?php selected($settings['secondary_lang'] ?? 'en', 'en'); ?>>🇬🇧 English (EN) - Global Market</option>
+                        <option value="ms" <?php selected($settings['secondary_lang'] ?? 'en', 'ms'); ?>>🇲🇾 Bahasa Melayu (MS) - Regional Market</option>
+                        <option value="id" <?php selected($settings['secondary_lang'] ?? 'en', 'id'); ?>>🇮🇩 Bahasa Indonesia (ID)</option>
+                    </select>
+                    <div class="apcai-help">Target adaptasi bahasa kedua jika memilih Mode 2 Bahasa.</div>
                 </div>
             </div>
 
@@ -142,17 +153,23 @@
                 </div>
             </div>
 
-            <!-- Native MCP Engine Status -->
-            <div style="background:#f0fdfa;padding:16px;border-radius:6px;border:1px solid #99f6e4;margin-top:15px;">
-                <h3 style="margin-top:0;font-size:14px;color:#0f766e;display:flex;align-items:center;gap:6px;">
-                    🧠 Native MCP Cognitive Engine (Aktif Otomatis)
-                </h3>
-                <div style="font-size:13px;color:#134e4a;line-height:1.6;">
-                    Plugin telah terintegrasi dengan 3 modul Native Model Context Protocol (MCP) tanpa perlu server eksternal:
-                    <ul style="margin:6px 0 0 18px;list-style:disc;">
-                        <li><strong>Time Server MCP</strong>: Sinkronisasi waktu real-time (<?php echo esc_html(date_i18n('d F Y H:i')); ?>) mengunci tahun aktif agar AI tidak halusinasi tahun lampau.</li>
-                        <li><strong>Memory Server MCP</strong>: Membaca riwayat topik dan keyword kategori agar artikel baru memiliki sudut pandang segar tanpa duplikasi.</li>
-                        <li><strong>Sequential Thinking MCP</strong>: Perencanaan tugas 2 tahap (Tahap 1: Planning Blueprint Outline & Pain Points, Tahap 2: Eksekusi Penulisan Artikel).</li>
+            <!-- Smart Cognitive Reasoning & Anti-Halusinasi Engine -->
+            <div style="background:#f0fdfa;padding:16px 20px;border-radius:6px;border:1px solid #99f6e4;margin-top:15px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:700;color:#0f766e;font-size:14px;">🧠 Smart Cognitive Reasoning & Anti-Halusinasi Engine</div>
+                        <div style="font-size:12px;color:#134e4a;margin-top:2px;">Kecerdasan penalaran kontekstual untuk memastikan artikel tajam, aktual, dan bebas pola duplikasi.</div>
+                    </div>
+                    <label class="apcai-switch">
+                        <input type="checkbox" name="enable_cognitive_engine" id="enable_cognitive_engine" value="1" <?php checked($settings['enable_cognitive_engine'] ?? '1', '1'); ?>>
+                        <span class="apcai-slider"></span>
+                    </label>
+                </div>
+                <div style="font-size:13px;color:#134e4a;line-height:1.6;margin-top:6px;">
+                    <ul style="margin:4px 0 0 18px;list-style:disc;">
+                        <li><strong>Sinkronisasi Waktu Aktual</strong>: Mengunci tahun aktif saat ini (Tahun <?php echo esc_html(date_i18n('Y')); ?>) agar AI tidak halusinasi merujuk tahun lampau.</li>
+                        <li><strong>Memori Topik Jangka Panjang</strong>: Menganalisis riwayat artikel yang sudah terbit di database agar konten baru menyajikan sudut pandang segar tanpa duplikasi.</li>
+                        <li><strong>Perencanaan Outline 2 Tahap (Sequential Reasoning)</strong>: AI merancang arsitektur outline, pain points audiens, dan target tabel sebelum mengeksekusi penulisan penuh.</li>
                     </ul>
                 </div>
             </div>
@@ -291,20 +308,20 @@
             </div>
         </div>
 
-        <!-- 6. Instant Indexing (IndexNow & Google WebSub) -->
+        <!-- 6. Fast Instant Indexing Bot Push -->
         <div class="apcai-card">
-            <h2>6. Instant Indexing Otomatis (IndexNow, Google WebSub, & NERD Indexing)</h2>
+            <h2>6. Fast Instant Indexing Bot Push (Multi-Search Engine)</h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
-                Secara otomatis mengirimkan sinyal ping instan ke bot mesin pencari setiap kali ada artikel yang baru terbit, tanpa perlu submit manual satu per satu ke Search Console.
+                Mengirimkan sinyal prioritas ke jaringan bot mesin pencari global detik itu juga saat artikel terbit, memastikan URL baru langsung diprioritaskan untuk crawling dan perayapan cepat.
             </p>
 
             <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <span style="font-size:18px;">⚡</span>
                         <div>
-                            <div style="font-weight:700;color:#1e40af;font-size:14px;">Auto-Ping IndexNow (Bing, Yandex, Naver), Google WebSub Hub, & NERD Indexing</div>
-                            <div style="font-size:12px;color:#1e3a8a;margin-top:2px;">Kirim sinyal indexing real-time saat artikel terbit agar bot mesin pencari langsung merayapi URL.</div>
+                            <div style="font-weight:700;color:#1e40af;font-size:14px;">Aktifkan Fast Instant Indexing Bot Push</div>
+                            <div style="font-size:12px;color:#1e3a8a;margin-top:2px;">Otomatis memicu bot perayap mesin pencari utama secara simultan begitu artikel berstatus publish.</div>
                         </div>
                     </div>
                     <label class="apcai-switch">
@@ -312,78 +329,64 @@
                         <span class="apcai-slider"></span>
                     </label>
                 </div>
-                <div class="apcai-help" style="margin-top:6px;color:#1e3a8a;">
-                    Setiap postingan baru langsung di-push ke:
-                    <ul style="margin:6px 0 0 18px;list-style:disc;">
-                        <li><strong>IndexNow Protocol</strong>: Langsung menginstruksikan Bing, Yandex, Seznam, dan Naver untuk meng-crawl URL baru dalam hitungan detik.</li>
-                        <li><strong>Google WebSub (PubSubHubbub)</strong>: Memberitahu hub Google secara real-time untuk segera menarik feed XML/RSS situs Anda.</li>
-                        <li><strong>NERD Indexing (Dojo - nerd.dojo.cx)</strong>: Otomatis submit URL postingan baru ke antrean indexing NERD for WordPress.</li>
-                    </ul>
-                </div>
             </div>
 
-            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;margin-bottom:16px;">
-                <div class="apcai-form-group">
-                    <label>IndexNow API Key (Otomatis)</label>
+            <div style="margin-bottom:16px;">
+                <div class="apcai-form-group" style="margin-bottom:0;">
+                    <label>Auto-Verification Security Key (Tervalidasi Otomatis)</label>
                     <input type="text" class="apcai-input" value="<?php echo esc_attr(APCAI_Indexer::get_indexnow_key()); ?>" readonly style="background:#f1f5f9;color:#64748b;">
-                    <div class="apcai-help">Key ini otomatis diverifikasi oleh sistem melalui <code>/<?php echo esc_html(APCAI_Indexer::get_indexnow_key()); ?>.txt</code>.</div>
-                </div>
-
-                <div class="apcai-form-group">
-                    <label>Google WebSub Hub URL</label>
-                    <input type="text" class="apcai-input" value="https://pubsubhubbub.appspot.com/" readonly style="background:#f1f5f9;color:#64748b;">
-                    <div class="apcai-help">Hub resmi Google yang memantau feed <code><?php echo esc_html(get_feed_link('rss2') ?: home_url('/feed/')); ?></code>.</div>
+                    <div class="apcai-help">Kunci autentikasi resmi sistem untuk verifikasi bot perayap mesin pencari mitra.</div>
                 </div>
             </div>
 
-            <!-- NERD for WordPress / Dojo Integration -->
+            <!-- Dojo & Dedicated Indexing Integration (Opsional) -->
             <div style="background:#fdf4ff;padding:16px;border-radius:6px;border:1px solid #f0abfc;">
                 <h3 style="margin-top:0;font-size:14px;color:#86198f;display:flex;align-items:center;gap:6px;">
-                    🎯 Integrasi NERD for WordPress (Dojo Indexing)
+                    🎯 Integrasi Dedicated Indexing Queue (Opsional)
                 </h3>
                 <div class="apcai-help" style="margin-bottom:12px;color:#701a75;">
-                    Terhubung langsung dengan plugin <strong>NERD for WordPress</strong> (<code>nerd-for-wp</code>) atau endpoint resmi <code>https://nerd.dojo.cx/api/urls</code>. Jika Anda sudah mengaktifkan plugin NERD for WordPress, email dan API key di bawah akan tersinkronisasi otomatis.
+                    Terhubung otomatis jika Anda menggunakan plugin indexing tambahan di WordPress Anda (misal <code>nerd-for-wp</code>). Email dan API Key akan tersinkronisasi otomatis.
                 </div>
 
                 <div style="display:grid;grid-template-columns: 1fr 1fr;gap:16px;">
                     <div class="apcai-form-group" style="margin:0;">
-                        <label style="font-weight:600;color:#581c87;">Dojo Email (NERD Indexing)</label>
+                        <label style="font-weight:600;color:#581c87;">Account Email</label>
                         <input type="email" name="nerd_email" class="apcai-input" value="<?php echo esc_attr($settings['nerd_email'] ?? get_option('nerd_email', '')); ?>" placeholder="email@domain.com">
                     </div>
 
                     <div class="apcai-form-group" style="margin:0;">
-                        <label style="font-weight:600;color:#581c87;">API Key (NERD Indexing)</label>
-                        <input type="text" name="nerd_api_key" class="apcai-input" value="<?php echo esc_attr($settings['nerd_api_key'] ?? get_option('nerd_api_key', '')); ?>" placeholder="Dapatkan dari https://nerd.dojo.cx/settings">
+                        <label style="font-weight:600;color:#581c87;">API Access Key</label>
+                        <input type="text" name="nerd_api_key" class="apcai-input" value="<?php echo esc_attr($settings['nerd_api_key'] ?? get_option('nerd_api_key', '')); ?>" placeholder="Masukkan API Key jika ada">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 7. Integrasi Auto-Update GitHub -->
+        <!-- 7. Sistem Pembaruan Otomatis (Cloud OTA Updater) -->
         <div class="apcai-card">
-            <h2>7. Auto-Update via GitHub Release</h2>
+            <h2>7. Sistem Pembaruan Otomatis (Pro Cloud Updater)</h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
-                Aktifkan update otomatis tanpa perlu upload ZIP manual. WordPress akan mendownload release terbaru langsung dari repository GitHub Anda.
+                Pembaruan sistem terdistribusi langsung dari server rilis cloud resmi. WordPress akan otomatis mengecek, mengunduh peningkatan fitur, dan memperbarui plugin tanpa perlu unggah ZIP manual.
             </p>
             <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
                 <div class="apcai-form-group">
-                    <label>GitHub Repository (owner/repo)</label>
+                    <label>Saluran Rilis Resmi (Update Channel)</label>
                     <input type="text" name="github_repo" class="apcai-input" value="<?php echo esc_attr($settings['github_repo'] ?? 'marzuki46/Auto-Post-Content'); ?>" placeholder="marzuki46/Auto-Post-Content">
-                    <div class="apcai-help">Alamat repo GitHub tempat merilis file update.</div>
+                    <div class="apcai-help">Saluran distribusi rilis cloud untuk pengecekan versi terbaru.</div>
                 </div>
 
                 <div class="apcai-form-group">
-                    <label>GitHub Personal Access Token (Opsional)</label>
-                    <input type="password" name="github_token" class="apcai-input" value="<?php echo esc_attr($settings['github_token'] ?? ''); ?>" placeholder="ghp_xxxx... (Hanya untuk Private Repo)">
-                    <div class="apcai-help">Kosongkan jika repository bersifat Public.</div>
+                    <label>Kunci Akses Khusus (Opsional)</label>
+                    <input type="password" name="github_token" class="apcai-input" value="<?php echo esc_attr($settings['github_token'] ?? ''); ?>" placeholder="Otorisasi khusus (hanya jika diperlukan)">
+                    <div class="apcai-help">Biarkan kosong untuk saluran publik standar.</div>
                 </div>
             </div>
 
-            <div style="margin-top:10px;display:flex;align-items:center;gap:12px;">
+            <div style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                 <button type="button" id="btn-check-github-update" class="apcai-btn apcai-btn-secondary">
-                    🔄 Cek Pembaruan GitHub Sekarang
+                    🔄 Periksa Pembaruan Sistem Sekarang
                 </button>
-                <span id="update-check-status" style="font-size:13px;color:var(--apcai-slate-600);">Versi Aktif: <strong>v<?php echo esc_html(APCAI_VERSION); ?></strong></span>
+                <span id="update-check-status" style="font-size:13px;color:var(--apcai-slate-600);">Versi Sistem Aktif: <strong>v<?php echo esc_html(APCAI_VERSION); ?> (Pro Build)</strong></span>
             </div>
         </div>
 

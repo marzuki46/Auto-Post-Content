@@ -64,8 +64,9 @@ class APCAI_Generator {
         if (!empty($settings['audience']))    $brand_ctx[] = "Target audience: " . $settings['audience'];
         if (!empty($settings['brand_voice'])) $brand_ctx[] = "Brand voice: " . $settings['brand_voice'];
 
-        // Inject Native Time Context
-        if (class_exists('APCAI_Agent_Engine')) {
+        // Inject Dynamic Time Context jika Cognitive Engine aktif
+        $cognitive_enabled = ($settings['enable_cognitive_engine'] ?? '1') === '1';
+        if ($cognitive_enabled && class_exists('APCAI_Agent_Engine')) {
             $time_ctx = APCAI_Agent_Engine::get_time_context();
             $brand_ctx[] = $time_ctx['prompt'];
         }
@@ -567,17 +568,18 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
         $brand_voice = !empty($settings['brand_voice']) ? $settings['brand_voice'] : '';
 
         // -----------------------------------------------------------------
-        // ADOPSI MCP ENGINE: Time Server, Memory Server & Sequential Thinking
+        // COGNITIVE REASONING & CONTEXT ENGINE
         // -----------------------------------------------------------------
-        $time_ctx = class_exists('APCAI_Agent_Engine') ? APCAI_Agent_Engine::get_time_context() : ['prompt' => '', 'year' => date('Y')];
-        $mem_ctx  = class_exists('APCAI_Agent_Engine') ? APCAI_Agent_Engine::get_memory_context($category_id, $input_topic) : ['prompt' => ''];
+        $cognitive_enabled = ($settings['enable_cognitive_engine'] ?? '1') === '1';
+        $time_ctx = ($cognitive_enabled && class_exists('APCAI_Agent_Engine')) ? APCAI_Agent_Engine::get_time_context() : ['prompt' => '', 'year' => date('Y')];
+        $mem_ctx  = ($cognitive_enabled && class_exists('APCAI_Agent_Engine')) ? APCAI_Agent_Engine::get_memory_context($category_id, $input_topic) : ['prompt' => ''];
 
-        // Eksekusi Sequential Thinking (Tahap 1: Planning Blueprint)
+        // Eksekusi Sequential Reasoning (Tahap 1: Planning Blueprint)
         $blueprint_instruction = "";
         if (!empty($custom_options['custom_outline'])) {
             // Gunakan outline manual/custom yang diedit pengguna dari Tahap 1
-            $blueprint_instruction = "OUTLINE & STRUKTUR ARTIKEL DARI PENGGUNA (WAJIB DIIKUTI & DIKEMBANGKAN):\n\"\"\"\n" . trim($custom_options['custom_outline']) . "\n\"\"\"\n(Kembangkan setiap sub-heading dan poin-poin di atas secara mendalam dan berbobot tanpa mengurangi poin yang telah ditentukan).";
-        } elseif (class_exists('APCAI_Agent_Engine')) {
+            $blueprint_instruction = "OUTLINE & STRUKTUR ARTIKEL DARI PENGGUNA (WAJIB DIIKUTI & DIIKUTI):\n\"\"\"\n" . trim($custom_options['custom_outline']) . "\n\"\"\"\n(Kembangkan setiap sub-heading dan poin-poin di atas secara mendalam dan berbobot tanpa mengurangi poin yang telah ditentukan).";
+        } elseif ($cognitive_enabled && class_exists('APCAI_Agent_Engine')) {
             $blueprint_res = APCAI_Agent_Engine::plan_article_blueprint(
                 $input_topic,
                 $category_id,
@@ -833,6 +835,60 @@ KANDUNGAN (MARKDOWN):
         }
 
         return $parsed;
+    }
+
+    /**
+     * Adaptasi Artikel ke Bahasa Indonesia (ID) dari EN/MS
+     */
+    public static function generate_indonesian_adaptation($source_title, $source_content, $source_excerpt = '', $source_keywords = []) {
+        $settings = get_option('apcai_settings', []);
+        $site_name = !empty($settings['site_name']) ? $settings['site_name'] : get_bloginfo('name');
+        $brand_voice = !empty($settings['brand_voice']) ? $settings['brand_voice'] : '';
+
+        $system_prompt = "Anda adalah Senior Content Strategist & Copywriter Bahasa Indonesia profesional mewakili {$site_name}.
+Tugas: Adaptasikan artikel ke dalam BAHASA INDONESIA yang mengalir, lugas, ramah SEO, dan profesional ({$brand_voice}).
+Gunakan kata 'Cara', BUKAN 'Panduan'. Dilarang menggunakan pemisah garis mendatar (---) atau pembuka klise.
+
+Format Output WAJIB JSON murni:
+{
+  \"title\": \"Judul Bahasa Indonesia yang memikat\",
+  \"slug\": \"slug-artikel-indonesia\",
+  \"seo_title\": \"SEO Title Tag (maks 60 karakter)\",
+  \"seo_description\": \"Meta deskripsi persuasif (maks 155 karakter)\",
+  \"excerpt\": \"Ringkasan artikel 2-3 kalimat\",
+  \"keywords\": [\"kata kunci 1\", \"kata kunci 2\", \"kata kunci 3\"],
+  \"content_md\": \"Konten lengkap dalam Markdown...\"
+}";
+
+        $kw_str = is_array($source_keywords) ? implode(", ", $source_keywords) : (string)$source_keywords;
+        $user_prompt = "ARTIKEL SUMBER:\nJUDUL: \"\"\"" . substr($source_title, 0, 300) . "\"\"\"\nKONTEN:\n\"\"\"\n" . substr($source_content, 0, 45000) . "\n\"\"\"";
+
+        $model = $settings['model_writer'] ?? 'openai/gpt-4o';
+        $raw = APCAI_AI_Client::chat($system_prompt, $user_prompt, $model, 0.6);
+        if (is_wp_error($raw)) return $raw;
+
+        $parsed = APCAI_AI_Client::extract_json($raw);
+        if (is_wp_error($parsed)) return $parsed;
+
+        if (isset($parsed['content_md'])) {
+            $parsed['content_md'] = preg_replace('/^#\s+[^\n]+(?:\r?\n|$)/', '', trim($parsed['content_md']));
+        }
+        return $parsed;
+    }
+
+    /**
+     * Helper Router Adaptasi Multi-Bahasa Universal (ID / EN / MS)
+     */
+    public static function generate_adaptation(string $target_lang, string $source_title, string $source_content, string $source_excerpt = '', array|string $source_keywords = []): array|WP_Error {
+        switch ($target_lang) {
+            case 'ms':
+                return self::generate_malay_adaptation($source_title, $source_content, $source_excerpt, $source_keywords);
+            case 'en':
+                return self::generate_english_adaptation($source_title, $source_content, $source_excerpt, $source_keywords);
+            case 'id':
+            default:
+                return self::generate_indonesian_adaptation($source_title, $source_content, $source_excerpt, $source_keywords);
+        }
     }
 
     /**

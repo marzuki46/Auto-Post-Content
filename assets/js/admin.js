@@ -455,35 +455,35 @@ jQuery(document).ready(function ($) {
         });
     }
 
-    // Check GitHub Update Manual Trigger
+    // Check Cloud Update Manual Trigger
     $('#btn-check-github-update').on('click', function (e) {
         e.preventDefault();
         const $btn = $(this);
         const $status = $('#update-check-status');
-        $btn.html('<span class="apcai-spinner"></span> Menghubungkan GitHub...').prop('disabled', true);
-        $status.html('Sedang memeriksa versi rilis terbaru di GitHub...');
+        $btn.html('<span class="apcai-spinner"></span> Menghubungkan Server Cloud...').prop('disabled', true);
+        $status.html('Sedang memeriksa versi rilis terbaru di Cloud Server...');
 
         $.post(ajaxurl, {
             action: 'apcai_check_update_now',
             nonce: nonce
         }, function (res) {
-            $btn.html('🔄 Cek Pembaruan GitHub Sekarang').prop('disabled', false);
+            $btn.html('🔄 Periksa Pembaruan Sistem Sekarang').prop('disabled', false);
             if (res.success && res.data) {
                 if (res.data.has_update) {
-                    $status.html('<span style="color:#10b981;font-weight:700;">🚀 Tersedia Versi v' + res.data.new_version + '!</span> <a href="' + res.data.update_url + '" class="button button-primary" style="margin-left:8px;">Klik untuk Update Otomatis</a>');
-                    showNotice('Versi baru ditemukan: v' + res.data.new_version, 'success');
+                    $status.html('<span style="color:#10b981;font-weight:700;">🚀 Pembaruan Tersedia: v' + res.data.new_version + '!</span> <a href="' + res.data.update_url + '" class="button button-primary" style="margin-left:8px;">Perbarui Sistem Sekarang</a>');
+                    showNotice('Pembaruan baru tersedia: v' + res.data.new_version, 'success');
                 } else {
-                    $status.html('<span style="color:#10b981;">✅ Plugin sudah memakai versi terbaru (v' + res.data.current + ').</span>');
-                    showNotice('Plugin Anda sudah versi paling mutakhir.', 'success');
+                    $status.html('<span style="color:#10b981;">✅ Sistem Anda sudah menggunakan versi paling mutakhir (v' + res.data.current + ').</span>');
+                    showNotice('Sistem Anda sudah dalam kondisi mutakhir.', 'success');
                 }
             } else {
                 $status.html('<span style="color:#ef4444;">Gagal memeriksa update: ' + (res.data || 'Error') + '</span>');
-                showNotice('Gagal menghubungkan GitHub release.', 'error');
+                showNotice('Gagal menghubungkan server rilis.', 'error');
             }
         }).fail(function () {
-            $btn.html('🔄 Cek Pembaruan GitHub Sekarang').prop('disabled', false);
-            $status.html('<span style="color:#ef4444;">Koneksi ke server gagal.</span>');
-            showNotice('Error jaringan saat cek update.', 'error');
+            $btn.html('🔄 Periksa Pembaruan Sistem Sekarang').prop('disabled', false);
+            $status.html('<span style="color:#ef4444;">Koneksi ke server cloud gagal.</span>');
+            showNotice('Error jaringan saat mengecek pembaruan.', 'error');
         });
     });
 
