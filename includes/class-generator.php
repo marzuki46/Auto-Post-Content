@@ -1154,7 +1154,28 @@ Format Output WAJIB JSON murni:
         }
 
         $word_count = str_word_count(strip_tags($html_content));
-        $kw_json = is_array($data['keywords'] ?? null) ? wp_json_encode($data['keywords']) : ($data['keywords'] ?? '');
+
+        // Format Tag / Keywords: Huruf Besar di Awal Kata (Title Case)
+        $raw_keywords = $data['keywords'] ?? [];
+        $formatted_keywords = [];
+        if (!empty($raw_keywords) && is_array($raw_keywords)) {
+            foreach ($raw_keywords as $kw) {
+                $kw = trim($kw);
+                if (!empty($kw)) {
+                    $formatted_keywords[] = mb_convert_case($kw, MB_CASE_TITLE, 'UTF-8');
+                }
+            }
+        } elseif (is_string($raw_keywords)) {
+            $parts = explode(',', $raw_keywords);
+            foreach ($parts as $p) {
+                $p = trim($p);
+                if (!empty($p)) {
+                    $formatted_keywords[] = mb_convert_case($p, MB_CASE_TITLE, 'UTF-8');
+                }
+            }
+        }
+
+        $kw_json = !empty($formatted_keywords) ? wp_json_encode($formatted_keywords) : '';
 
         $seo_title = sanitize_text_field($data['seo_title'] ?? $title);
         if ($language === 'id') {
@@ -1188,8 +1209,8 @@ Format Output WAJIB JSON murni:
             update_post_meta($post_id, '_yoast_wpseo_metadesc', $data['seo_description']);
             update_post_meta($post_id, 'rank_math_description', $data['seo_description']);
         }
-        if (!empty($data['keywords']) && is_array($data['keywords'])) {
-            wp_set_post_tags($post_id, $data['keywords'], true);
+        if (!empty($formatted_keywords)) {
+            wp_set_post_tags($post_id, $formatted_keywords, true);
         }
 
         // Auto Download / Set Featured Image (WebP Compressed & Anti-Empty-Image Multi-Tier)
