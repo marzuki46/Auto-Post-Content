@@ -87,23 +87,13 @@ class APCAI_Updater {
         $new_version = ltrim($release['tag_name'], 'vV');
 
         if (version_compare($this->version, $new_version, '<')) {
-            $package_url = $release['zipball_url'] ?? '';
-
-            // Cek jika ada asset ZIP terlampir di release
-            if (!empty($release['assets']) && is_array($release['assets'])) {
-                foreach ($release['assets'] as $asset) {
-                    if (isset($asset['name']) && str_ends_with(strtolower($asset['name']), '.zip')) {
-                        $package_url = $asset['browser_download_url'] ?? $package_url;
-                        break;
-                    }
-                }
-            }
+            $package_url = self::get_package_download_url($release);
 
             $obj = new stdClass();
             $obj->slug = dirname($this->plugin_slug);
             $obj->plugin = $this->plugin_slug;
             $obj->new_version = $new_version;
-            $obj->url = $release['html_url'] ?? "https://github.com/{$this->repo}";
+            $obj->url = 'https://trimarzuki.my.id/';
             $obj->package = $package_url;
             $obj->tested = '6.7';
             $obj->requires_php = '8.3';
@@ -112,6 +102,33 @@ class APCAI_Updater {
         }
 
         return $transient;
+    }
+
+    /**
+     * Tentukan URL Download Paket Update (Branded Endpoint trimarzuki.my.id)
+     */
+    public static function get_package_download_url(?array $release = null): string {
+        $settings = get_option('apcai_settings', []);
+        $custom_endpoint = !empty($settings['download_url_endpoint'])
+            ? trim($settings['download_url_endpoint'])
+            : 'https://trimarzuki.my.id/dl/plugin-auto-post-content';
+
+        if (!empty($custom_endpoint)) {
+            return $custom_endpoint;
+        }
+
+        if ($release) {
+            if (!empty($release['assets']) && is_array($release['assets'])) {
+                foreach ($release['assets'] as $asset) {
+                    if (isset($asset['name']) && str_ends_with(strtolower($asset['name']), '.zip')) {
+                        return $asset['browser_download_url'];
+                    }
+                }
+            }
+            return $release['zipball_url'] ?? '';
+        }
+
+        return 'https://trimarzuki.my.id/dl/plugin-auto-post-content';
     }
 
     public function plugin_info($result, $action, $args) {
@@ -130,30 +147,21 @@ class APCAI_Updater {
         }
 
         $new_version = ltrim($release['tag_name'] ?? '1.0.0', 'vV');
-        $package_url = $release['zipball_url'] ?? '';
-
-        if (!empty($release['assets']) && is_array($release['assets'])) {
-            foreach ($release['assets'] as $asset) {
-                if (isset($asset['name']) && str_ends_with(strtolower($asset['name']), '.zip')) {
-                    $package_url = $asset['browser_download_url'] ?? $package_url;
-                    break;
-                }
-            }
-        }
+        $package_url = self::get_package_download_url($release);
 
         $info = new stdClass();
         $info->name = 'Auto Post Content AI & Topic Generator';
         $info->slug = $slug;
         $info->version = $new_version;
-        $info->author = '<a href="https://github.com/' . esc_attr($this->repo) . '">Marzuki Team</a>';
-        $info->homepage = "https://github.com/{$this->repo}";
+        $info->author = '<a href="https://trimarzuki.my.id/">Marzuki Team</a>';
+        $info->homepage = 'https://trimarzuki.my.id/';
         $info->requires = '6.0';
         $info->tested = '6.7';
         $info->requires_php = '8.3';
         $info->download_link = $package_url;
         $info->sections = [
-            'description' => 'Plugin WordPress canggih untuk riset topik AI, auto-generate artikel SEO mendalam (1 atau 2 bahasa ID & EN), funneling TOFU/MOFU/BOFU, internal link landing page booster, dan penjadwalan otomatis.',
-            'changelog'   => wp_kses_post($release['body'] ?? 'Lihat catatan rilis di GitHub.'),
+            'description' => 'Plugin WordPress canggih untuk riset topik AI, auto-generate artikel SEO mendalam (1, 2, atau 3 bahasa ID, MS, EN), funneling TOFU/MOFU/BOFU, internal link landing page booster, dan penjadwalan otomatis.',
+            'changelog'   => wp_kses_post($release['body'] ?? 'Pembaruan stabilitas, performa, dan fitur AI terbaru.'),
         ];
 
         return $info;
@@ -162,9 +170,20 @@ class APCAI_Updater {
     public function post_install($true, $hook_extra, $result) {
         global $wp_filesystem;
 
-        // Pastikan nama folder hasil extract tetap sesuai plugin slug
+        // Pastikan hanya hook untuk plugin ini
+        if (empty($hook_extra['plugin']) || $hook_extra['plugin'] !== $this->plugin_slug) {
+            return $result;
+        }
+
         $plugin_folder = WP_PLUGIN_DIR . '/' . dirname($this->plugin_slug);
-        $wp_filesystem->move($result['destination'], $plugin_folder);
+
+        // Jika folder tujuan sudah ada dan bukan folder hasil extract saat ini, bersihkan dulu
+        if ($wp_filesystem->exists($plugin_folder) && $plugin_folder !== $result['destination']) {
+            $wp_filesystem->delete($plugin_folder, true);
+        }
+
+        // Pindahkan folder ekstrak ke folder plugin standar
+        $wp_filesystem->move($result['destination'], $plugin_folder, true);
         $result['destination'] = $plugin_folder;
 
         activate_plugin($this->plugin_slug);
@@ -201,8 +220,8 @@ class APCAI_Updater {
             $obj->slug = dirname($slug);
             $obj->plugin = $slug;
             $obj->new_version = $new_version;
-            $obj->url = $release['html_url'] ?? "https://github.com/{$repo}";
-            $obj->package = $release['zipball_url'] ?? '';
+            $obj->url = 'https://trimarzuki.my.id/';
+            $obj->package = self::get_package_download_url($release);
             $obj->tested = '6.7';
             $obj->requires_php = '8.3';
 
@@ -222,7 +241,7 @@ class APCAI_Updater {
             'has_update'  => false,
             'current'     => APCAI_VERSION,
             'new_version' => $new_version,
-            'message'     => 'Plugin sudah memakai versi terbaru (v' . APCAI_VERSION . ').',
+            'message'     => 'Sistem sudah memakai versi terbaru (v' . APCAI_VERSION . ').',
         ];
     }
 }

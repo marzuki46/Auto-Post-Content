@@ -58,27 +58,56 @@ jQuery(document).ready(function ($) {
         });
     });
 
+    // Toggle AI Provider View
+    $('input[name="ai_provider"]').on('change', function () {
+        const val = $(this).val();
+        if (val === 'gemini') {
+            $('#provider-gemini-fields').slideDown(200);
+            $('#provider-ninerouter-fields').slideUp(200);
+            $('#help-model-writer').html('Pilihan Gemini: <code>gemini-2.5-pro</code>, <code>gemini-2.0-flash</code>, <code>gemini-1.5-pro</code>');
+            $('#help-model-planner').html('Pilihan Gemini: <code>gemini-2.5-flash</code>, <code>gemini-2.0-flash</code>, <code>gemini-1.5-flash</code>');
+            if ($('#setting_model_writer').val().includes('gpt-4o')) {
+                $('#setting_model_writer').val('gemini-2.0-flash');
+            }
+            if ($('#setting_model_planner').val().includes('gpt-4o')) {
+                $('#setting_model_planner').val('gemini-2.5-flash');
+            }
+        } else {
+            $('#provider-gemini-fields').slideUp(200);
+            $('#provider-ninerouter-fields').slideDown(200);
+            $('#help-model-writer').html('Pilihan: <code>openai/gpt-4o</code>, <code>claude-3-5-sonnet</code>, <code>google/gemini-2.5-pro</code>');
+            $('#help-model-planner').html('Pilihan: <code>openai/gpt-4o-mini</code>, <code>claude-3-5-haiku</code>');
+            if ($('#setting_model_writer').val().startsWith('gemini-')) {
+                $('#setting_model_writer').val('openai/gpt-4o');
+            }
+            if ($('#setting_model_planner').val().startsWith('gemini-')) {
+                $('#setting_model_planner').val('openai/gpt-4o-mini');
+            }
+        }
+    });
+
     // Test API Connection
     $('#btn-test-api').on('click', function (e) {
         e.preventDefault();
         const $btn = $(this);
-        $btn.html('<span class="apcai-spinner"></span> Memeriksa...').prop('disabled', true);
+        $btn.html('<span class="apcai-spinner"></span> Memeriksa Koneksi API...').prop('disabled', true);
 
         $.post(ajaxurl, {
             action: 'apcai_test_api',
             nonce: nonce
         }, function (res) {
-            $btn.html('🔌 Test Koneksi 9Router').prop('disabled', false);
+            $btn.html('🔌 Uji Koneksi API Sekarang').prop('disabled', false);
             if (res.success && res.data) {
                 const count = res.data.count || 0;
-                const reply = res.data.reply ? ' | Test Chat: "' + res.data.reply + '"' : '';
-                showNotice('✅ Terhubung! ' + count + ' Model AI terdeteksi' + reply, 'success');
+                const reply = res.data.reply ? ' | Balasan Model: "' + res.data.reply + '"' : '';
+                const provider = res.data.provider || 'AI Engine';
+                showNotice('✅ Berhasil Terhubung ke ' + provider + '! ' + count + ' model terdeteksi' + reply, 'success');
             } else {
-                showNotice('❌ ' + (res.data || 'Gagal tersambung.'), 'error');
+                showNotice('❌ ' + (res.data || 'Gagal tersambung ke provider AI.'), 'error');
             }
         }).fail(function () {
-            $btn.html('🔌 Test Koneksi 9Router').prop('disabled', false);
-            showNotice('Gagal menghubungkan server.', 'error');
+            $btn.html('🔌 Uji Koneksi API Sekarang').prop('disabled', false);
+            showNotice('Gagal menghubungkan server API.', 'error');
         });
     });
 

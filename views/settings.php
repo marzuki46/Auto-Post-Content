@@ -10,33 +10,78 @@
     <form id="apcai-settings-form">
         <!-- 1. AI Connection -->
         <div class="apcai-card">
-            <h2>1. Konfigurasi Endpoint 9Router & Model AI</h2>
-            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
-                <div class="apcai-form-group">
-                    <label>URL Endpoint 9Router <span style="color:#ef4444;">*</span></label>
-                    <input type="text" name="ninerouter_url" class="apcai-input" value="<?php echo esc_attr($settings['ninerouter_url'] ?? 'https://api.9router.com'); ?>" required>
-                    <div class="apcai-help">Endpoint OpenAI-compatible gateway dari 9Router.</div>
+            <h2>1. Konfigurasi Provider AI Engine & Model</h2>
+            <div class="apcai-form-group" style="margin-bottom:18px;">
+                <label>Pilihan AI Engine Provider</label>
+                <div style="display:flex;gap:20px;align-items:center;margin-top:6px;">
+                    <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;">
+                        <input type="radio" name="ai_provider" value="gemini" <?php checked($settings['ai_provider'] ?? 'gemini', 'gemini'); ?>>
+                        <span>✨ Google Gemini Direct (Google AI Studio)</span>
+                    </label>
+                    <label style="cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;">
+                        <input type="radio" name="ai_provider" value="ninerouter" <?php checked($settings['ai_provider'] ?? 'gemini', 'ninerouter'); ?>>
+                        <span>🌐 9Router / OpenAI-Compatible Gateway</span>
+                    </label>
                 </div>
+            </div>
 
-                <div class="apcai-form-group">
-                    <label>API Key 9Router</label>
-                    <input type="password" name="ninerouter_key" class="apcai-input" value="<?php echo esc_attr($settings['ninerouter_key'] ?? ''); ?>" placeholder="nr-xxxx...">
-                    <div class="apcai-help">Dapat dikosongkan jika 9Router berjalan lokal tanpa API Key.</div>
+            <!-- Fields Google Gemini -->
+            <div id="provider-gemini-fields" style="<?php echo (($settings['ai_provider'] ?? 'gemini') === 'gemini') ? '' : 'display:none;'; ?>background:#f8fafc;padding:16px;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:18px;">
+                <div class="apcai-form-group" style="margin-bottom:0;">
+                    <label>Google Gemini API Key <span style="color:#ef4444;">*</span></label>
+                    <input type="password" name="gemini_api_key" class="apcai-input" value="<?php echo esc_attr($settings['gemini_api_key'] ?? ''); ?>" placeholder="AIzaSy...">
+                    <div class="apcai-help">Dapatkan API Key gratis atau berbayar dari <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>. Terhubung langsung via official OpenAI-compatible endpoint Google.</div>
+                </div>
+            </div>
+
+            <!-- Fields 9Router -->
+            <div id="provider-ninerouter-fields" style="<?php echo (($settings['ai_provider'] ?? 'gemini') === 'ninerouter') ? '' : 'display:none;'; ?>background:#f8fafc;padding:16px;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:18px;">
+                <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label>URL Endpoint 9Router <span style="color:#ef4444;">*</span></label>
+                        <input type="text" name="ninerouter_url" class="apcai-input" value="<?php echo esc_attr($settings['ninerouter_url'] ?? 'https://api.9router.com'); ?>">
+                        <div class="apcai-help">Endpoint gateway OpenAI-compatible.</div>
+                    </div>
+
+                    <div class="apcai-form-group" style="margin:0;">
+                        <label>API Key 9Router</label>
+                        <input type="password" name="ninerouter_key" class="apcai-input" value="<?php echo esc_attr($settings['ninerouter_key'] ?? ''); ?>" placeholder="nr-xxxx...">
+                        <div class="apcai-help">Dapat dikosongkan jika 9Router berjalan lokal tanpa API Key.</div>
+                    </div>
                 </div>
             </div>
 
             <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
                 <div class="apcai-form-group">
                     <label>Model Penulis Artikel (Writer Model)</label>
-                    <input type="text" name="model_writer" class="apcai-input" value="<?php echo esc_attr($settings['model_writer'] ?? 'openai/gpt-4o'); ?>">
-                    <div class="apcai-help">Contoh: openai/gpt-4o, claude-3-5-sonnet, google/gemini-2.5-pro, dll.</div>
+                    <input type="text" name="model_writer" id="setting_model_writer" class="apcai-input" value="<?php echo esc_attr($settings['model_writer'] ?? ((($settings['ai_provider'] ?? 'gemini') === 'gemini') ? 'gemini-2.0-flash' : 'openai/gpt-4o')); ?>">
+                    <div class="apcai-help" id="help-model-writer">
+                        <?php if (($settings['ai_provider'] ?? 'gemini') === 'gemini'): ?>
+                            Pilihan Gemini: <code>gemini-2.5-pro</code>, <code>gemini-2.0-flash</code>, <code>gemini-1.5-pro</code>
+                        <?php else: ?>
+                            Pilihan: <code>openai/gpt-4o</code>, <code>claude-3-5-sonnet</code>, <code>google/gemini-2.5-pro</code>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
                 <div class="apcai-form-group">
                     <label>Model Perencana & Riset (Planner Model)</label>
-                    <input type="text" name="model_planner" class="apcai-input" value="<?php echo esc_attr($settings['model_planner'] ?? 'openai/gpt-4o-mini'); ?>">
-                    <div class="apcai-help">Model cepat & ekonomis untuk riset topik konten.</div>
+                    <input type="text" name="model_planner" id="setting_model_planner" class="apcai-input" value="<?php echo esc_attr($settings['model_planner'] ?? ((($settings['ai_provider'] ?? 'gemini') === 'gemini') ? 'gemini-2.5-flash' : 'openai/gpt-4o-mini')); ?>">
+                    <div class="apcai-help" id="help-model-planner">
+                        <?php if (($settings['ai_provider'] ?? 'gemini') === 'gemini'): ?>
+                            Pilihan Gemini: <code>gemini-2.5-flash</code>, <code>gemini-2.0-flash</code>, <code>gemini-1.5-flash</code>
+                        <?php else: ?>
+                            Pilihan: <code>openai/gpt-4o-mini</code>, <code>claude-3-5-haiku</code>
+                        <?php endif; ?>
+                    </div>
                 </div>
+            </div>
+
+            <div style="margin-top:12px;">
+                <button type="button" id="btn-test-api" class="apcai-btn apcai-btn-secondary">
+                    🔌 Uji Koneksi API Sekarang
+                </button>
+                <span id="api-test-result" style="margin-left:12px;font-size:13px;"></span>
             </div>
         </div>
 
@@ -368,11 +413,20 @@
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 Pembaruan sistem terdistribusi langsung dari server rilis cloud resmi. WordPress akan otomatis mengecek, mengunduh peningkatan fitur, dan memperbarui plugin tanpa perlu unggah ZIP manual.
             </p>
+
+            <div class="apcai-form-group">
+                <label>URL Distribusi Paket Unduhan (Custom Branding Endpoint)</label>
+                <input type="url" name="download_url_endpoint" class="apcai-input" value="<?php echo esc_attr($settings['download_url_endpoint'] ?? 'https://trimarzuki.my.id/dl/plugin-auto-post-content'); ?>" placeholder="https://trimarzuki.my.id/dl/plugin-auto-post-content">
+                <div class="apcai-help">
+                    WordPress akan mengunduh paket update langsung dari URL ini. Anda dapat me-redirect URL ini di web <code>trimarzuki.my.id</code> ke link ZIP release terbaru agar domain GitHub 100% tersembunyi.
+                </div>
+            </div>
+
             <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
                 <div class="apcai-form-group">
                     <label>Saluran Rilis Resmi (Update Channel)</label>
                     <input type="text" name="github_repo" class="apcai-input" value="<?php echo esc_attr($settings['github_repo'] ?? 'marzuki46/Auto-Post-Content'); ?>" placeholder="marzuki46/Auto-Post-Content">
-                    <div class="apcai-help">Saluran distribusi rilis cloud untuk pengecekan versi terbaru.</div>
+                    <div class="apcai-help">Saluran distribusi rilis cloud untuk pengecekan versi terbaru di background.</div>
                 </div>
 
                 <div class="apcai-form-group">

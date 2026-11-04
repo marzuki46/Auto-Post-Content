@@ -4,19 +4,37 @@ defined('ABSPATH') || exit;
 class APCAI_AI_Client {
 
     public static function chat($system_prompt, $user_prompt, $model = '', $temperature = 0.7) {
-        $settings = get_option('apcai_settings', []);
-        $base_url = rtrim($settings['ninerouter_url'] ?? '', '/');
-        $api_key  = $settings['ninerouter_key'] ?? '';
-        
-        if (empty($base_url)) {
-            return new WP_Error('missing_url', __('URL Endpoint 9Router belum dikonfigurasi.', 'auto-post-content'));
-        }
+        $settings    = get_option('apcai_settings', []);
+        $ai_provider = $settings['ai_provider'] ?? 'ninerouter';
 
-        if (empty($model)) {
-            $model = $settings['model_writer'] ?? 'openai/gpt-4o';
-        }
+        if ($ai_provider === 'gemini') {
+            $api_key  = trim($settings['gemini_api_key'] ?? '');
+            if (empty($api_key)) {
+                return new WP_Error('missing_gemini_key', __('Google Gemini API Key belum diisi.', 'auto-post-content'));
+            }
 
-        $endpoint = $base_url . '/v1/chat/completions';
+            $endpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+            if (empty($model)) {
+                $model = $settings['model_writer'] ?? 'gemini-2.0-flash';
+            }
+            // Bersihkan prefix jika ada (contoh: google/gemini-2.5-pro -> gemini-2.5-pro)
+            $model = preg_replace('/^google\//i', '', trim($model));
+            $provider_name = 'Google Gemini Direct';
+        } else {
+            $base_url = rtrim($settings['ninerouter_url'] ?? '', '/');
+            $api_key  = trim($settings['ninerouter_key'] ?? '');
+            
+            if (empty($base_url)) {
+                return new WP_Error('missing_url', __('URL Endpoint 9Router belum dikonfigurasi.', 'auto-post-content'));
+            }
+
+            if (empty($model)) {
+                $model = $settings['model_writer'] ?? 'openai/gpt-4o';
+            }
+
+            $endpoint = $base_url . '/v1/chat/completions';
+            $provider_name = '9Router';
+        }
 
         $messages = [];
         if (!empty($system_prompt)) {
@@ -62,7 +80,7 @@ class APCAI_AI_Client {
             } else {
                 $detail = substr($raw_body, 0, 300);
             }
-            return new WP_Error('api_http_error', "API Error (HTTP $code) dari 9Router: $detail");
+            return new WP_Error('api_http_error', "API Error (HTTP $code) dari {$provider_name}: $detail");
         }
 
         // Dukungan respons Server-Sent Events (SSE chunk data: { ... } atau \r\n)
@@ -238,7 +256,54 @@ class APCAI_AI_Client {
     }
 
     public static function test_connection() {
-        $settings = get_option('apcai_settings', []);
+        $settings    = get_option('apcai_settings', []);
+        $ai_provider = $settings['ai_provider'] ?? 'ninerouter';
+
+        if ($ai_provider === 'gemini') {
+            $api_key = trim($settings['gemini_api_key'] ?? '');
+            if (empty($api_key)) {
+                return new WP_Error('missing_gemini_key', __('Google Gemini API Key belum diisi.', 'auto-post-content'));
+            }
+
+            // Uji model list dari Google AI Studio API
+            $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models?key=' . urlencode($api_key);
+            $response = wp_remote_get($endpoint, ['timeout' => 30]);
+
+            if (is_wp_error($response)) {
+                return $response;
+            }
+
+            $code = wp_remote_retrieve_response_code($response);
+            $body = wp_remote_retrieve_body($response);
+
+            if ($code < 200 || $code >= 300) {
+                $err_data = json_decode($body, true);
+                $msg = $err_data['error']['message'] ?? substr($body, 0, 200);
+                return new WP_Error('gemini_error', "Koneksi Google Gemini Gagal (HTTP $code): $msg");
+            }
+
+            $data = json_decode($body, true);
+            $models = [];
+            if (isset($data['models']) && is_array($data['models'])) {
+                foreach ($data['models'] as $m) {
+                    if (isset($m['name'])) {
+                        $models[] = str_replace('models/', '', $m['name']);
+                    }
+                }
+            }
+
+            $writer_model = $settings['model_writer'] ?? 'gemini-2.0-flash';
+            $test_chat = self::chat('', 'Balas satu kata saja: OK', $writer_model, 0.1);
+            $chat_reply = is_wp_error($test_chat) ? ('Peringatan Chat: ' . $test_chat->get_error_message()) : trim($test_chat);
+
+            return [
+                'provider' => 'Google Gemini Direct',
+                'models'   => $models,
+                'reply'    => $chat_reply,
+                'count'    => count($models),
+            ];
+        }
+
         $base_url = rtrim($settings['ninerouter_url'] ?? '', '/');
         $api_key  = $settings['ninerouter_key'] ?? '';
 
@@ -286,9 +351,10 @@ class APCAI_AI_Client {
         $chat_reply = is_wp_error($test_chat) ? ('Peringatan Model Chat: ' . $test_chat->get_error_message()) : trim($test_chat);
 
         return [
-            'models' => $models,
-            'reply'  => $chat_reply,
-            'count'  => count($models),
+            'provider' => '9Router Gateway',
+            'models'   => $models,
+            'reply'    => $chat_reply,
+            'count'    => count($models),
         ];
     }
 }
