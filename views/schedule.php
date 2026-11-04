@@ -1,19 +1,19 @@
 <?php defined('ABSPATH') || exit; ?>
 <div class="wrap apcai-wrap">
     <div class="apcai-header">
-        <h1><span class="dashicons dashicons-clock" style="font-size:28px;color:#2563eb;"></span> Auto Post Schedule & Penjadwalan</h1>
+        <h1><span class="dashicons dashicons-clock" style="font-size:28px;color:#2563eb;"></span> <?php echo esc_html(APCAI_I18n::t('Auto Post Schedule & Penjadwalan', 'Auto Post Scheduler & Timing')); ?></h1>
     </div>
 
     <form id="apcai-schedule-form">
         <div class="apcai-card">
-            <h2>Konfigurasi Penjadwalan Otomatis</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('Konfigurasi Penjadwalan Otomatis', 'Automated Publishing Configuration')); ?></h2>
 
             <div class="apcai-form-group" style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;padding:16px 20px;border-radius:6px;border:1px solid #e2e8f0;">
                 <div>
                     <label for="schedule_enabled" style="font-size:15px;font-weight:700;color:#0f172a;margin:0;cursor:pointer;">
-                        Aktifkan Auto Post Schedule
+                        <?php echo esc_html(APCAI_I18n::t('Aktifkan Auto Post Schedule', 'Enable Auto Post Scheduler')); ?>
                     </label>
-                    <div class="apcai-help" style="margin:2px 0 0 0;">Jika aktif (ON), WordPress cron akan otomatis memposting artikel secara terjadwal dan mandiri.</div>
+                    <div class="apcai-help" style="margin:2px 0 0 0;"><?php echo esc_html(APCAI_I18n::t('Jika aktif (ON), WordPress cron akan otomatis memposting artikel secara terjadwal dan mandiri.', 'When ON, WordPress cron will autonomously publish articles according to your schedule.')); ?></div>
                 </div>
                 <label class="apcai-switch">
                     <input type="checkbox" id="schedule_enabled" name="schedule_enabled" value="1" <?php checked(!empty($settings['schedule_enabled'])); ?>>

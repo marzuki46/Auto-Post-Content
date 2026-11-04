@@ -38,8 +38,8 @@ class APCAI_Admin {
 
     public static function register_menus() {
         add_menu_page(
-            __('Auto Post AI', 'auto-post-content'),
-            __('Auto Post AI', 'auto-post-content'),
+            APCAI_I18n::t('Auto Post AI', 'Auto Post AI'),
+            APCAI_I18n::t('Auto Post AI', 'Auto Post AI'),
             'manage_options',
             'apcai-dashboard',
             [__CLASS__, 'page_dashboard'],
@@ -49,8 +49,8 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
-            __('AI Content Studio', 'auto-post-content'),
-            __('Content Studio', 'auto-post-content'),
+            APCAI_I18n::t('AI Content Studio', 'AI Content Studio'),
+            APCAI_I18n::t('Content Studio', 'Content Studio'),
             'manage_options',
             'apcai-studio',
             [__CLASS__, 'page_studio']
@@ -58,8 +58,8 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
-            __('Topik & Funneling', 'auto-post-content'),
-            __('Topik & Funneling', 'auto-post-content'),
+            APCAI_I18n::t('Topik & Funneling', 'Topics & Funneling'),
+            APCAI_I18n::t('Topik & Funneling', 'Topics & Funneling'),
             'manage_options',
             'apcai-topics',
             [__CLASS__, 'page_topics']
@@ -67,8 +67,8 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
-            __('Target Landing Pages', 'auto-post-content'),
-            __('Target Landing Page', 'auto-post-content'),
+            APCAI_I18n::t('Target Landing Pages', 'Target Landing Pages'),
+            APCAI_I18n::t('Target Landing Page', 'Landing Pages'),
             'manage_options',
             'apcai-landing-pages',
             [__CLASS__, 'page_landing_pages']
@@ -76,8 +76,8 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
-            __('Auto Schedule', 'auto-post-content'),
-            __('Auto Schedule', 'auto-post-content'),
+            APCAI_I18n::t('Auto Schedule', 'Auto Scheduler'),
+            APCAI_I18n::t('Auto Schedule', 'Scheduler'),
             'manage_options',
             'apcai-schedule',
             [__CLASS__, 'page_schedule']
@@ -85,8 +85,8 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
-            __('Pool Foto Sendiri', 'auto-post-content'),
-            __('Pool Foto Sendiri', 'auto-post-content'),
+            APCAI_I18n::t('Pool Foto Sendiri', 'Media Photo Pool'),
+            APCAI_I18n::t('Pool Foto Sendiri', 'Photo Pool'),
             'manage_options',
             'apcai-gallery',
             [__CLASS__, 'page_gallery']
@@ -94,8 +94,8 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
-            __('Pengaturan AI & Prompt', 'auto-post-content'),
-            __('Pengaturan', 'auto-post-content'),
+            APCAI_I18n::t('Pengaturan AI & Prompt', 'AI & System Settings'),
+            APCAI_I18n::t('Pengaturan', 'Settings'),
             'manage_options',
             'apcai-settings',
             [__CLASS__, 'page_settings']
@@ -103,8 +103,8 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
-            __('Riwayat & Log', 'auto-post-content'),
-            __('Riwayat Log', 'auto-post-content'),
+            APCAI_I18n::t('Riwayat & Log', 'Activity Logs'),
+            APCAI_I18n::t('Riwayat Log', 'Logs'),
             'manage_options',
             'apcai-logs',
             [__CLASS__, 'page_logs']

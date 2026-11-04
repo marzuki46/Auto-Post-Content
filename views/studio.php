@@ -3,9 +3,9 @@
     <div class="apcai-header">
         <h1>
             <span class="dashicons dashicons-edit" style="font-size:30px;color:var(--apcai-primary);"></span>
-            AI Content Studio (Silo & Funnel Aware)
+            <?php echo esc_html(APCAI_I18n::t('AI Content Studio (Silo & Funnel Aware)', 'AI Content Studio (Silo & Funnel Aware)')); ?>
         </h1>
-        <a href="<?php echo esc_url(admin_url('admin.php?page=apcai-settings')); ?>" class="apcai-btn apcai-btn-secondary">⚙️ Pengaturan Default</a>
+        <a href="<?php echo esc_url(admin_url('admin.php?page=apcai-settings')); ?>" class="apcai-btn apcai-btn-secondary">⚙️ <?php echo esc_html(APCAI_I18n::t('Pengaturan Default', 'Default Settings')); ?></a>
     </div>
 
     <div style="display:grid;grid-template-columns: 1fr 1fr;gap:24px;">

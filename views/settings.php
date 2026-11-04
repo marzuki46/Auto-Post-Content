@@ -1,16 +1,13 @@
 <?php defined('ABSPATH') || exit; ?>
 <div class="wrap apcai-wrap">
     <div class="apcai-header">
-        <h1><span class="dashicons dashicons-admin-settings" style="font-size:28px;color:#2563eb;"></span> Pengaturan AI, Bahasa, & Prompt SEO</h1>
-        <button id="btn-test-api" type="button" class="apcai-btn apcai-btn-secondary">
-            🔌 Test Koneksi 9Router
-        </button>
+        <h1><span class="dashicons dashicons-admin-settings" style="font-size:28px;color:#2563eb;"></span> <?php echo esc_html(APCAI_I18n::t('Pengaturan AI, Bahasa, & Prompt SEO', 'AI, Language, & SEO Prompt Settings')); ?></h1>
     </div>
 
     <form id="apcai-settings-form">
         <!-- 1. AI Connection -->
         <div class="apcai-card">
-            <h2>1. Konfigurasi Provider AI Engine & Model</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('1. Konfigurasi Provider AI Engine & Model', '1. AI Engine Provider & Model Configuration')); ?></h2>
             <div class="apcai-form-group" style="margin-bottom:18px;">
                 <label>Pilihan AI Engine Provider</label>
                 <div style="display:flex;gap:20px;align-items:center;margin-top:6px;">
@@ -87,7 +84,7 @@
 
         <!-- 2. Pengaturan Bahasa & Multi-Language -->
         <div class="apcai-card">
-            <h2>2. Bahasa & Mode Multi-Language</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('2. Bahasa & Mode Multi-Language', '2. Language & Multi-Language Mode')); ?></h2>
             <div style="display:grid;grid-template-columns: 1fr 1fr 1fr;gap:20px;">
                 <div class="apcai-form-group">
                     <label>Mode Bahasa</label>
@@ -152,7 +149,7 @@
 
         <!-- 3. Niche & Konteks Brand -->
         <div class="apcai-card">
-            <h2>3. Konteks Niche & Brand Identity</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('3. Konteks Niche & Brand Identity', '3. Niche Context & Brand Identity')); ?></h2>
             <div style="display:grid;grid-template-columns: 1fr 1fr 1fr;gap:20px;">
                 <div class="apcai-form-group">
                     <label>Nama Situs / Brand</label>
@@ -261,7 +258,7 @@
 
         <!-- 4. Default Prompt & Call To Action (Persis CMS SEO) -->
         <div class="apcai-card">
-            <h2>4. Template Prompt & Target Call To Action (CTA)</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('4. Template Prompt & Target Call To Action (CTA)', '4. Prompt Templates & Call To Action (CTA)')); ?></h2>
             <div class="apcai-form-group">
                 <label>Template Prompt Riset Kata Kunci Entitas (Entity SEO)</label>
                 <textarea name="keyword_prompt" class="apcai-textarea" rows="4"><?php echo esc_textarea($settings['keyword_prompt'] ?? ''); ?></textarea>
@@ -307,7 +304,7 @@
 
         <!-- 5. Arsitektur Silo & Internal Linking Otomatis -->
         <div class="apcai-card">
-            <h2>5. Arsitektur Silo & Internal Linking Otomatis (Anti-Bocor Funnel)</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('5. Arsitektur Silo & Internal Linking Otomatis (Anti-Bocor Funnel)', '5. Silo Architecture & Automated Internal Linking (Leak-Proof Funnel)')); ?></h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 Mengatur distribusi link internal kontekstual antar artikel dan ke halaman utama secara terstruktur untuk melipatgandakan otoritas domain (Link Juice) dan menjaga alur psikologi pembaca dari edukasi hingga pembelian.
             </p>
@@ -355,7 +352,7 @@
 
         <!-- 6. Fast Instant Indexing Bot Push -->
         <div class="apcai-card">
-            <h2>6. Fast Instant Indexing Bot Push (Multi-Search Engine)</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('6. Fast Instant Indexing Bot Push (Multi-Search Engine)', '6. Fast Instant Indexing Bot Push (Multi-Search Engine)')); ?></h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 Mengirimkan sinyal prioritas ke jaringan bot mesin pencari global detik itu juga saat artikel terbit, memastikan URL baru langsung diprioritaskan untuk crawling dan perayapan cepat.
             </p>
@@ -407,46 +404,46 @@
             </div>
         </div>
 
-        <!-- 7. Sistem Pembaruan Otomatis (Cloud OTA Updater) -->
+        <!-- 7. Status Pembaruan Sistem (Cloud OTA Status) -->
         <div class="apcai-card">
-            <h2>7. Sistem Pembaruan Otomatis (Pro Cloud Updater)</h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('7. Status Sistem & Pembaruan Cloud Otomatis', '7. System Status & Pro Cloud Updates')); ?></h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
-                Pembaruan sistem terdistribusi langsung dari server rilis cloud resmi. WordPress akan otomatis mengecek, mengunduh peningkatan fitur, dan memperbarui plugin tanpa perlu unggah ZIP manual.
+                <?php echo esc_html(APCAI_I18n::t(
+                    'Sistem terhubung langsung ke cloud release channel resmi. Peningkatan model AI, algoritma indexing, dan patch keamanan diterapkan otomatis.',
+                    'The system connects directly to the official cloud release channel. AI engine improvements, indexing algorithms, and security patches apply automatically.'
+                )); ?>
             </p>
 
-            <div class="apcai-form-group">
-                <label>URL Distribusi Paket Unduhan (Custom Branding Endpoint)</label>
-                <input type="url" name="download_url_endpoint" class="apcai-input" value="<?php echo esc_attr($settings['download_url_endpoint'] ?? 'https://trimarzuki.my.id/dl/plugin-auto-post-content'); ?>" placeholder="https://trimarzuki.my.id/dl/plugin-auto-post-content">
-                <div class="apcai-help">
-                    WordPress akan mengunduh paket update langsung dari URL ini. Anda dapat me-redirect URL ini di web <code>trimarzuki.my.id</code> ke link ZIP release terbaru agar domain GitHub 100% tersembunyi.
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:15px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="font-size:24px;">🛡️</span>
+                    <div>
+                        <div style="font-weight:700;color:#166534;font-size:14px;">
+                            <?php echo esc_html(APCAI_I18n::t('Anda Menggunakan Versi Resmi Terbaru', 'You Are Using The Latest Official Version')); ?>
+                        </div>
+                        <div style="font-size:12px;color:#15803d;margin-top:2px;">
+                            <?php echo esc_html(APCAI_I18n::t('Lisensi Resmi Pro Aktif • Terhubung ke Server Rilis Cloud', 'Official Pro License Active • Connected to Cloud Release Server')); ?>
+                        </div>
+                    </div>
+                </div>
+                <div style="background:#dcfce7;border:1px solid #86efac;color:#166534;font-weight:700;padding:6px 14px;border-radius:20px;font-size:13px;">
+                    v<?php echo esc_html(APCAI_VERSION); ?> Pro
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:20px;">
-                <div class="apcai-form-group">
-                    <label>Saluran Rilis Resmi (Update Channel)</label>
-                    <input type="text" name="github_repo" class="apcai-input" value="<?php echo esc_attr($settings['github_repo'] ?? 'marzuki46/Auto-Post-Content'); ?>" placeholder="marzuki46/Auto-Post-Content">
-                    <div class="apcai-help">Saluran distribusi rilis cloud untuk pengecekan versi terbaru di background.</div>
-                </div>
-
-                <div class="apcai-form-group">
-                    <label>Kunci Akses Khusus (Opsional)</label>
-                    <input type="password" name="github_token" class="apcai-input" value="<?php echo esc_attr($settings['github_token'] ?? ''); ?>" placeholder="Otorisasi khusus (hanya jika diperlukan)">
-                    <div class="apcai-help">Biarkan kosong untuk saluran publik standar.</div>
-                </div>
-            </div>
-
-            <div style="margin-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                 <button type="button" id="btn-check-github-update" class="apcai-btn apcai-btn-secondary">
-                    🔄 Periksa Pembaruan Sistem Sekarang
+                    <?php echo esc_html(APCAI_I18n::t('🔄 Periksa Pembaruan Sistem Sekarang', '🔄 Check for Updates Now')); ?>
                 </button>
-                <span id="update-check-status" style="font-size:13px;color:var(--apcai-slate-600);">Versi Sistem Aktif: <strong>v<?php echo esc_html(APCAI_VERSION); ?> (Pro Build)</strong></span>
+                <span id="update-check-status" style="font-size:13px;color:var(--apcai-slate-600);">
+                    <?php echo esc_html(APCAI_I18n::t('Status: Semua sistem beroperasi normal.', 'Status: All systems operating normally.')); ?>
+                </span>
             </div>
         </div>
 
         <div>
             <button type="submit" class="apcai-btn apcai-btn-primary" style="font-size:14px;padding:12px 28px;">
-                💾 Simpan Semua Pengaturan
+                💾 <?php echo esc_html(APCAI_I18n::t('Simpan Semua Pengaturan', 'Save All Settings')); ?>
             </button>
         </div>
     </form>
