@@ -47,7 +47,7 @@
                 <div class="apcai-form-group">
                     <label>Mode Bahasa</label>
                     <select name="lang_mode" class="apcai-select">
-                        <option value="dual" <?php selected($settings['lang_mode'] ?? '', 'dual'); ?>>2 Bahasa (Bilingual: ID & EN Otomatis Dihubungkan)</option>
+                        <option value="dual" <?php selected($settings['lang_mode'] ?? '', 'dual'); ?>>2 Bahasa (Bilingual: ID & EN/MS Otomatis)</option>
                         <option value="single" <?php selected($settings['lang_mode'] ?? '', 'single'); ?>>1 Bahasa Saja</option>
                     </select>
                     <div class="apcai-help">Jika 2 bahasa diaktifkan, AI akan menulis artikel utama lalu mengadaptasinya secara organik ke bahasa kedua.</div>
@@ -57,9 +57,39 @@
                     <label>Bahasa Utama / Default (Primary Language)</label>
                     <select name="default_lang" class="apcai-select">
                         <option value="id" <?php selected($settings['default_lang'] ?? '', 'id'); ?>>🇮🇩 Bahasa Indonesia (ID) - Default</option>
-                        <option value="en" <?php selected($settings['default_lang'] ?? '', 'en'); ?>>🇬🇧 English (EN) - Default</option>
+                        <option value="ms" <?php selected($settings['default_lang'] ?? '', 'ms'); ?>>🇲🇾 Bahasa Melayu (MS - Malaysia/Brunei/Singapura)</option>
+                        <option value="en" <?php selected($settings['default_lang'] ?? '', 'en'); ?>>🇬🇧 English (EN)</option>
                     </select>
                     <div class="apcai-help">Pilih bahasa pertama yang dieksekusi saat scheduler berjalan.</div>
+                </div>
+            </div>
+
+            <!-- Target Range Jumlah Kata -->
+            <div style="background:#f8fafc;padding:16px;border-radius:6px;border:1px solid #cbd5e1;margin-top:10px;">
+                <label style="font-weight:600;font-size:13px;color:#1e293b;display:block;margin-bottom:6px;">
+                    📏 Target Rentang Jumlah Kata per Artikel (Word Count Range)
+                </label>
+                <div class="apcai-help" style="margin-bottom:12px;color:#475569;">
+                    Tentukan batas minimum dan maksimum kata yang wajib dihasilkan oleh AI agar artikel padat, mendalam, dan memenuhi standar algoritma Google E-E-A-T.
+                </div>
+                <div style="display:grid;grid-template-columns: 1fr 1fr 2fr;gap:16px;align-items:center;">
+                    <div>
+                        <label style="font-size:12px;font-weight:600;color:#64748b;">Min Kata:</label>
+                        <input type="number" name="word_count_min" id="word_count_min" class="apcai-input" value="<?php echo esc_attr($settings['word_count_min'] ?? 800); ?>" min="300" max="5000" step="50">
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:600;color:#64748b;">Maks Kata:</label>
+                        <input type="number" name="word_count_max" id="word_count_max" class="apcai-input" value="<?php echo esc_attr($settings['word_count_max'] ?? 1300); ?>" min="400" max="8000" step="50">
+                    </div>
+                    <div>
+                        <label style="font-size:12px;font-weight:600;color:#64748b;">Preset Cepat:</label>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;">
+                            <button type="button" class="apcai-btn apcai-btn-secondary btn-preset-words" data-min="600" data-max="900" style="padding:6px 10px;font-size:11px;">Ringkas (600-900)</button>
+                            <button type="button" class="apcai-btn apcai-btn-secondary btn-preset-words" data-min="900" data-max="1400" style="padding:6px 10px;font-size:11px;">Standar SEO (900-1400)</button>
+                            <button type="button" class="apcai-btn apcai-btn-secondary btn-preset-words" data-min="1400" data-max="2000" style="padding:6px 10px;font-size:11px;">Mendalam (1400-2000)</button>
+                            <button type="button" class="apcai-btn apcai-btn-secondary btn-preset-words" data-min="2000" data-max="3000" style="padding:6px 10px;font-size:11px;">Pilar (2000-3000)</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -128,12 +158,18 @@
             </div>
 
             <div style="background:#f0fdf4;padding:16px;border-radius:6px;border:1px solid #bbf7d0;margin-top:15px;">
-                <label style="display:flex;align-items:center;gap:10px;font-weight:600;color:#166534;cursor:pointer;">
-                    <input type="checkbox" name="auto_thumbnail" id="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>
-                    🖼️ Aktifkan Auto Thumbnail Kompresi WebP & Otomatis Lengkapi SEO (Alt, Title, Desc)
-                </label>
-                <div class="apcai-help" style="margin-top:6px;color:#15803d;">
-                    Saat artikel dipublish (manual atau schedule otomatis), plugin akan otomatis memasang foto thumbnail WebP ringan (&plusmn;40-80 KB) tanpa mengurangi kualitas, lengkap dengan Alt Image dan Caption SEO.
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:18px;">🖼️</span>
+                        <div>
+                            <div style="font-weight:700;color:#166534;font-size:14px;">Auto Thumbnail Kompresi WebP & Lengkapi SEO (Alt, Title, Desc)</div>
+                            <div style="font-size:12px;color:#15803d;margin-top:2px;">Otomatis memasang thumbnail WebP ultra-ringan (±40-80 KB) dengan garansi anti-kosong (multi-tier fallback).</div>
+                        </div>
+                    </div>
+                    <label class="apcai-switch">
+                        <input type="checkbox" name="auto_thumbnail" id="auto_thumbnail" value="1" <?php checked($settings['auto_thumbnail'] ?? '1', '1'); ?>>
+                        <span class="apcai-slider"></span>
+                    </label>
                 </div>
 
                 <div style="margin-top:14px;padding-top:12px;border-top:1px dashed #86efac;">
@@ -215,10 +251,19 @@
             </p>
 
             <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
-                <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;font-size:14px;">
-                    <input type="checkbox" name="enable_internal_links" id="enable_internal_links" value="1" <?php checked($settings['enable_internal_links'] ?? '1', '1'); ?>>
-                    🔗 Aktifkan Otomatisasi Arsitektur Silo & Internal Link Berjenjang
-                </label>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:18px;">🔗</span>
+                        <div>
+                            <div style="font-weight:700;color:#1e40af;font-size:14px;">Otomatisasi Arsitektur Silo & Internal Link Berjenjang</div>
+                            <div style="font-size:12px;color:#1e3a8a;margin-top:2px;">Mendistribusikan link equity antar funnel secara ketat tanpa kebocoran link.</div>
+                        </div>
+                    </div>
+                    <label class="apcai-switch">
+                        <input type="checkbox" name="enable_internal_links" id="enable_internal_links" value="1" <?php checked($settings['enable_internal_links'] ?? '1', '1'); ?>>
+                        <span class="apcai-slider"></span>
+                    </label>
+                </div>
                 <div class="apcai-help" style="margin-top:8px;color:#1e3a8a;line-height:1.6;">
                     Sistem secara otomatis menerapkan 4 hukum ketat Silo SEO di setiap artikel yang diposting:
                     <ul style="margin:6px 0 0 18px;list-style:disc;">
@@ -254,10 +299,19 @@
             </p>
 
             <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:16px;">
-                <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;font-size:14px;">
-                    <input type="checkbox" name="enable_instant_indexing" id="enable_instant_indexing" value="1" <?php checked($settings['enable_instant_indexing'] ?? '1', '1'); ?>>
-                    ⚡ Aktifkan Auto-Ping IndexNow (Bing, Yandex, Naver), Google WebSub Hub, & NERD Indexing
-                </label>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:18px;">⚡</span>
+                        <div>
+                            <div style="font-weight:700;color:#1e40af;font-size:14px;">Auto-Ping IndexNow (Bing, Yandex, Naver), Google WebSub Hub, & NERD Indexing</div>
+                            <div style="font-size:12px;color:#1e3a8a;margin-top:2px;">Kirim sinyal indexing real-time saat artikel terbit agar bot mesin pencari langsung merayapi URL.</div>
+                        </div>
+                    </div>
+                    <label class="apcai-switch">
+                        <input type="checkbox" name="enable_instant_indexing" id="enable_instant_indexing" value="1" <?php checked($settings['enable_instant_indexing'] ?? '1', '1'); ?>>
+                        <span class="apcai-slider"></span>
+                    </label>
+                </div>
                 <div class="apcai-help" style="margin-top:6px;color:#1e3a8a;">
                     Setiap postingan baru langsung di-push ke:
                     <ul style="margin:6px 0 0 18px;list-style:disc;">

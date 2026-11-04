@@ -14,6 +14,7 @@ class APCAI_Admin {
         add_action('wp_ajax_apcai_generate_outline_now', [__CLASS__, 'ajax_generate_outline_now']);
         add_action('wp_ajax_apcai_generate_now', [__CLASS__, 'ajax_generate_now']);
         add_action('wp_ajax_apcai_translate_en_now', [__CLASS__, 'ajax_translate_en_now']);
+        add_action('wp_ajax_apcai_translate_ms_now', [__CLASS__, 'ajax_translate_ms_now']);
         add_action('wp_ajax_apcai_publish_article', [__CLASS__, 'ajax_publish_article']);
         add_action('wp_ajax_apcai_delete_topic', [__CLASS__, 'ajax_delete_topic']);
         add_action('wp_ajax_apcai_trigger_cron_now', [__CLASS__, 'ajax_trigger_cron_now']);
@@ -243,6 +244,10 @@ class APCAI_Admin {
         $current['enable_internal_links'] = !empty($input['enable_internal_links']) ? '1' : '0';
         $current['enable_instant_indexing'] = !empty($input['enable_instant_indexing']) ? '1' : '0';
 
+        // Target Word Count Range
+        $current['word_count_min'] = max(300, absint($input['word_count_min'] ?? 800));
+        $current['word_count_max'] = max($current['word_count_min'] + 100, absint($input['word_count_max'] ?? 1300));
+
         // Sinkronisasi otomatis dengan plugin nerd-for-wp jika diset
         if (isset($input['nerd_email'])) {
             $nerd_email = sanitize_email(wp_unslash($input['nerd_email']));
@@ -398,6 +403,35 @@ class APCAI_Admin {
         wp_send_json_success(['result' => $res]);
     }
 
+    public static function ajax_translate_ms_now() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+
+        if (!headers_sent()) {
+            nocache_headers();
+            header('X-LiteSpeed-Cache-Control: no-cache');
+        }
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_control_set_nocache', 'APC AI Translate MS Ajax');
+        }
+
+        $title   = sanitize_text_field(wp_unslash($_POST['title'] ?? ''));
+        $content = wp_unslash($_POST['content_md'] ?? '');
+        $excerpt = sanitize_textarea_field(wp_unslash($_POST['excerpt'] ?? ''));
+        $kw      = isset($_POST['keywords']) ? (array)$_POST['keywords'] : [];
+
+        if (empty($title) || empty($content)) {
+            wp_send_json_error('Judul dan konten sumber harus ada sebelum adaptasi Bahasa Melayu.');
+        }
+
+        $res = APCAI_Generator::generate_malay_adaptation($title, $content, $excerpt, $kw);
+        if (is_wp_error($res)) {
+            wp_send_json_error($res->get_error_message());
+        }
+
+        wp_send_json_success(['result' => $res]);
+    }
+
     public static function ajax_publish_article() {
         check_ajax_referer('apcai_admin_nonce', 'nonce');
         if (!current_user_can('publish_posts')) {
@@ -414,6 +448,8 @@ class APCAI_Admin {
 
         $raw_id = $_POST['id_data'] ?? null;
         $raw_en = $_POST['en_data'] ?? null;
+        $raw_ms = $_POST['ms_data'] ?? null;
+        $primary_lang = sanitize_text_field(wp_unslash($_POST['primary_lang'] ?? 'id'));
         $publish_mode = sanitize_text_field(wp_unslash($_POST['publish_mode'] ?? 'both'));
         $category_id = absint($_POST['category_id'] ?? 1);
         $funnel_stage = sanitize_text_field(wp_unslash($_POST['funnel_stage'] ?? 'tofu'));
@@ -440,7 +476,7 @@ class APCAI_Admin {
 
         $id_data = $sanitize_data($raw_id);
         $status = ($publish_mode === 'draft') ? 'draft' : 'publish';
-        $post_id_primary = APCAI_Generator::save_article($id_data, 'id', 0, 0, $status, $category_id, $funnel_stage);
+        $post_id_primary = APCAI_Generator::save_article($id_data, $primary_lang, 0, 0, $status, $category_id, $funnel_stage);
 
         if (is_wp_error($post_id_primary)) {
             wp_send_json_error($post_id_primary->get_error_message());
@@ -456,9 +492,20 @@ class APCAI_Admin {
             }
         }
 
+        $post_id_ms = 0;
+        if (is_array($raw_ms) && !empty($raw_ms['title']) && ($publish_mode === 'both' || $publish_mode === 'id_only')) {
+            $ms_data = $sanitize_data($raw_ms);
+            $ms_status = ($publish_mode === 'id_only') ? 'draft' : 'publish';
+            $ms_id = APCAI_Generator::save_article($ms_data, 'ms', $post_id_primary, 0, $ms_status, $category_id, $funnel_stage);
+            if (!is_wp_error($ms_id)) {
+                $post_id_ms = $ms_id;
+            }
+        }
+
         wp_send_json_success([
             'primary_id' => $post_id_primary,
             'en_id'      => $post_id_en,
+            'ms_id'      => $post_id_ms,
             'view_url'   => get_permalink($post_id_primary),
             'edit_url'   => get_edit_post_link($post_id_primary, ''),
         ]);

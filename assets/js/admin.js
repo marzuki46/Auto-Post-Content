@@ -201,9 +201,20 @@ jQuery(document).ready(function ($) {
         });
     });
 
+    // Preset Word Count Buttons
+    $(document).on('click', '.btn-preset-words', function (e) {
+        e.preventDefault();
+        const min = $(this).data('min');
+        const max = $(this).data('max');
+        $('#word_count_min').val(min);
+        $('#word_count_max').val(max);
+        showNotice('Rentang kata diset ke ' + min + ' - ' + max + ' kata.', 'success');
+    });
+
     // Studio: Generate State
     let generatedIdData = null;
     let generatedEnData = null;
+    let generatedMsData = null;
 
     // Tahap 1: Buat Outline Terlebih Dahulu
     $('#btn-studio-plan-outline').on('click', function (e) {
@@ -278,6 +289,9 @@ jQuery(document).ready(function ($) {
             if (res.success && res.data.result) {
                 generatedIdData = res.data.result;
                 generatedEnData = null;
+                generatedMsData = null;
+                $('.apcai-tab[data-lang="en"], .apcai-tab[data-lang="ms"]').hide();
+                $('.apcai-tab[data-lang="id"]').addClass('active');
                 renderStudioView('id');
                 $('#studio-results-area').fadeIn();
                 showNotice('Artikel berhasil dikembangkan dari outline dengan tautan silo!', 'success');
@@ -288,6 +302,39 @@ jQuery(document).ready(function ($) {
             $btn.html('2. 🚀 Tulis Konten Penuh').prop('disabled', false);
             $('#studio-loading').hide();
             showNotice('Koneksi timeout atau gagal respon.', 'error');
+        });
+    });
+
+    // Studio: Generate MS Translation
+    $('#btn-studio-translate-ms').on('click', function (e) {
+        e.preventDefault();
+        if (!generatedIdData) {
+            showNotice('Generate artikel utama terlebih dahulu.', 'error');
+            return;
+        }
+
+        const $btn = $(this);
+        $btn.html('<span class="apcai-spinner"></span> Mengadaptasi Bahasa Melayu...').prop('disabled', true);
+
+        $.post(ajaxurl, {
+            action: 'apcai_translate_ms_now',
+            nonce: nonce,
+            title: generatedIdData.title,
+            content_md: generatedIdData.content_md,
+            excerpt: generatedIdData.excerpt,
+            keywords: generatedIdData.keywords
+        }, function (res) {
+            $btn.html('🇲🇾 Adaptasi ke Bahasa Melayu (MS)').prop('disabled', false);
+            if (res.success && res.data.result) {
+                generatedMsData = res.data.result;
+                $('.apcai-tab[data-lang="ms"]').show().click();
+                showNotice('Versi Bahasa Melayu berhasil diadaptasi!', 'success');
+            } else {
+                showNotice(res.data || 'Gagal adaptasi ke Bahasa Melayu.', 'error');
+            }
+        }).fail(function () {
+            $btn.html('🇲🇾 Adaptasi ke Bahasa Melayu (MS)').prop('disabled', false);
+            showNotice('Koneksi gagal.', 'error');
         });
     });
 
@@ -313,8 +360,7 @@ jQuery(document).ready(function ($) {
             $btn.html('🌐 Terjemahkan & Adaptasi ke English (EN)').prop('disabled', false);
             if (res.success && res.data.result) {
                 generatedEnData = res.data.result;
-                $('.apcai-tab[data-lang="en"]').show();
-                renderStudioView('en');
+                $('.apcai-tab[data-lang="en"]').show().click();
                 showNotice('Versi Bahasa Inggris berhasil diadaptasi!', 'success');
             } else {
                 showNotice(res.data || 'Gagal adaptasi ke EN.', 'error');
@@ -334,7 +380,9 @@ jQuery(document).ready(function ($) {
     });
 
     function renderStudioView(lang) {
-        const data = (lang === 'en') ? generatedEnData : generatedIdData;
+        let data = generatedIdData;
+        if (lang === 'en') data = generatedEnData;
+        if (lang === 'ms') data = generatedMsData;
         if (!data) return;
 
         $('#view-title').text(data.title || '-');
@@ -376,6 +424,8 @@ jQuery(document).ready(function ($) {
             nonce: nonce,
             id_data: generatedIdData,
             en_data: generatedEnData,
+            ms_data: generatedMsData,
+            primary_lang: $('#studio-primary-lang').val() || 'id',
             publish_mode: mode,
             category_id: $('#studio-category').val(),
             funnel_stage: $('#studio-funnel').val(),

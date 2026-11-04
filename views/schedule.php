@@ -8,24 +8,32 @@
         <div class="apcai-card">
             <h2>Konfigurasi Penjadwalan Otomatis</h2>
 
-            <div class="apcai-form-group" style="display:flex;align-items:center;gap:12px;background:#f8fafc;padding:15px;border-radius:6px;border:1px solid #e2e8f0;">
-                <input type="checkbox" id="schedule_enabled" name="schedule_enabled" value="1" <?php checked(!empty($settings['schedule_enabled'])); ?> style="width:20px;height:20px;">
+            <div class="apcai-form-group" style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;padding:16px 20px;border-radius:6px;border:1px solid #e2e8f0;">
                 <div>
                     <label for="schedule_enabled" style="font-size:15px;font-weight:700;color:#0f172a;margin:0;cursor:pointer;">
                         Aktifkan Auto Post Schedule
                     </label>
-                    <div class="apcai-help" style="margin:2px 0 0 0;">Jika dicentang, WordPress cron akan otomatis memposting artikel secara mandiri.</div>
+                    <div class="apcai-help" style="margin:2px 0 0 0;">Jika aktif (ON), WordPress cron akan otomatis memposting artikel secara terjadwal dan mandiri.</div>
                 </div>
+                <label class="apcai-switch">
+                    <input type="checkbox" id="schedule_enabled" name="schedule_enabled" value="1" <?php checked(!empty($settings['schedule_enabled'])); ?>>
+                    <span class="apcai-slider"></span>
+                </label>
             </div>
 
             <!-- Auto Topic Research & Autopilot Setting -->
-            <div style="background:#eff6ff;padding:16px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:20px;">
-                <label style="display:flex;align-items:center;gap:10px;font-weight:700;color:#1e40af;cursor:pointer;">
-                    <input type="checkbox" name="auto_research_topics" value="1" <?php checked($settings['auto_research_topics'] ?? '1', '1'); ?> style="width:18px;height:18px;">
-                    🤖 Auto Search / Riset Topik Mandiri (Full Autopilot)
-                </label>
-                <div class="apcai-help" style="margin-top:4px;color:#1d4ed8;">
-                    Jika dicentang, AI akan otomatis meriset topik baru dari kategori secara mandiri setiap kali antrian topik menipis (&lt; 5 topik). Anda tidak perlu meriset topik manual lagi — plugin akan terus mencari topik dan mempostingnya tanpa henti.
+            <div style="background:#eff6ff;padding:16px 20px;border-radius:6px;border:1px solid #bfdbfe;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <div>
+                        <div style="font-weight:700;color:#1e40af;font-size:14px;">🤖 Auto Search / Riset Topik Mandiri (Full Autopilot)</div>
+                        <div class="apcai-help" style="margin-top:2px;color:#1d4ed8;">
+                            AI otomatis meriset topik baru dari kategori jika antrian topik menipis (&lt; 5 topik). Web berjalan autopilot tanpa henti.
+                        </div>
+                    </div>
+                    <label class="apcai-switch">
+                        <input type="checkbox" name="auto_research_topics" id="auto_research_topics" value="1" <?php checked($settings['auto_research_topics'] ?? '1', '1'); ?>>
+                        <span class="apcai-slider"></span>
+                    </label>
                 </div>
 
                 <div style="display:grid;grid-template-columns: 1fr 1fr;gap:16px;margin-top:12px;">

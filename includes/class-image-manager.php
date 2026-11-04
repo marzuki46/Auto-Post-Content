@@ -4,14 +4,39 @@ defined('ABSPATH') || exit;
 class APCAI_Image_Manager {
 
     /**
+     * Bersihkan dan ringkas query pencarian gambar agar Bing mudah menemukan hasil
+     */
+    public static function clean_search_query(string $query): string {
+        $q = trim(strip_tags($query));
+        $q = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $q);
+        // Hapus kata-kata penghubung umum Indonesia/Inggris yang membuat query terlalu panjang
+        $stop_words = ['cara', 'panduan', 'tips', 'trik', 'lengkap', 'mudah', 'terbaru', 'bagaimana', 'agar', 'supaya', 'dan', 'di', 'ke', 'dari', 'untuk', 'pada', 'yang', 'dengan', 'adalah', 'how', 'to', 'guide', 'the', 'best', 'for', 'in', 'and', 'with'];
+        $words = preg_split('/\s+/', strtolower($q));
+        $filtered = [];
+        foreach ($words as $w) {
+            $w = trim($w);
+            if (strlen($w) > 2 && !in_array($w, $stop_words, true)) {
+                $filtered[] = $w;
+            }
+        }
+        if (empty($filtered)) {
+            $filtered = array_slice($words, 0, 3);
+        }
+        // Ambil maksimal 3-4 kata inti
+        return implode(' ', array_slice($filtered, 0, 3));
+    }
+
+    /**
      * Cari gambar dari Bing Image Search berdasarkan kata kunci
      */
     public static function search_bing_images(string $keyword, int $limit = 5): array {
         $keyword = trim($keyword);
         if (empty($keyword)) return [];
 
-        // Gunakan parameter filter gambar ukuran besar (imagesize-large) dan wide (aspect-wide)
-        $query = urlencode($keyword);
+        $clean_kw = self::clean_search_query($keyword);
+        if (empty($clean_kw)) $clean_kw = $keyword;
+
+        $query = urlencode($clean_kw);
         $url = "https://www.bing.com/images/search?q={$query}&qft=+filterui:imagesize-large+filterui:aspect-wide&form=IRFLTR";
 
         $response = wp_remote_get($url, [
@@ -411,7 +436,7 @@ class APCAI_Image_Manager {
      * Cari gambar dari Bing dan langsung attach ke artikel post
      */
     public static function attach_bing_featured_image(int $post_id, string $search_query, string $alt_text, string $title, string $caption = '') {
-        $urls = self::search_bing_images($search_query, 3);
+        $urls = self::search_bing_images($search_query, 4);
         if (empty($urls)) {
             return new WP_Error('no_images_found', 'Tidak ditemukan gambar di Bing untuk query: ' . $search_query);
         }
@@ -425,5 +450,72 @@ class APCAI_Image_Manager {
         }
 
         return new WP_Error('all_images_failed', 'Semua kandidat gambar Bing gagal didownload atau diproses.');
+    }
+
+    /**
+     * Handler Utama Multi-Tier: Menjamin 100% Artikel Terbit Memiliki Gambar (Anti-Empty-Image)
+     */
+    public static function attach_featured_image_robust(int $post_id, string $title, array $keywords, string $caption, int $translation_of = 0, string $cat_name = ''): bool {
+        // 1. Jika artikel turunan/terjemahan, gunakan thumbnail yang sama dari artikel induk
+        if ($translation_of > 0) {
+            $parent_thumb = get_post_thumbnail_id($translation_of);
+            if ($parent_thumb) {
+                set_post_thumbnail($post_id, $parent_thumb);
+                return true;
+            }
+        }
+
+        // Cek jika post sudah punya thumbnail
+        if (has_post_thumbnail($post_id)) {
+            return true;
+        }
+
+        $settings = get_option('apcai_settings', []);
+        $thumb_source = $settings['thumbnail_source'] ?? 'bing';
+        $primary_kw = (!empty($keywords) && is_array($keywords)) ? reset($keywords) : $title;
+        $alt_text = !empty($primary_kw) ? ($primary_kw . ' - ' . $title) : $title;
+
+        // Tier A: Sumber pilihan utama pengguna
+        if ($thumb_source === 'pool') {
+            if (self::attach_from_local_pool($post_id, $alt_text, $title, $caption)) return true;
+        } elseif ($thumb_source === 'media') {
+            if (self::attach_from_existing_media($post_id, $alt_text, $title, $caption, $primary_kw)) return true;
+        }
+
+        // Tier B: Bing Image Search dengan Primary Keyword
+        $search_kw = !empty($primary_kw) ? $primary_kw : $title;
+        $res = self::attach_bing_featured_image($post_id, $search_kw, $alt_text, $title, $caption);
+        if (!is_wp_error($res) && $res) {
+            return true;
+        }
+
+        // Tier C: Bing Image Search dengan Query Alternatif (Kategori / Niche)
+        $fallback_query = !empty($cat_name) ? $cat_name : ($settings['niche'] ?? '');
+        if (!empty($fallback_query) && $fallback_query !== $search_kw) {
+            $res = self::attach_bing_featured_image($post_id, $fallback_query, $alt_text, $title, $caption);
+            if (!is_wp_error($res) && $res) {
+                return true;
+            }
+        }
+
+        // Tier D: Fallback ke Gambar Media Library WordPress yang sudah ada
+        if (self::attach_from_existing_media($post_id, $alt_text, $title, $caption, $primary_kw)) {
+            return true;
+        }
+
+        // Tier E: Fallback ke Pool Koleksi Gambar Lokal
+        if (self::attach_from_local_pool($post_id, $alt_text, $title, $caption)) {
+            return true;
+        }
+
+        // Tier F: Fallback Terakhir ke Unsplash Royalty-Free Image
+        $safe_kw = rawurlencode(self::clean_search_query($search_kw) ?: 'business');
+        $unsplash_url = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80";
+        $res = self::process_and_attach_image($unsplash_url, $post_id, $alt_text, $title, $caption);
+        if (!is_wp_error($res) && $res) {
+            return true;
+        }
+
+        return false;
     }
 }

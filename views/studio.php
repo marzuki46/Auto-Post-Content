@@ -13,7 +13,7 @@
         <div class="apcai-card">
             <h2>1. Parameter Silo, Kategori, & Konten</h2>
             
-            <div style="display:grid;grid-template-columns: 1fr 1fr;gap:16px;">
+            <div style="display:grid;grid-template-columns: 1fr 1fr 1fr;gap:16px;">
                 <div class="apcai-form-group">
                     <label>Kategori Silo <span style="color:#ef4444;">*</span></label>
                     <select id="studio-category" class="apcai-select">
@@ -23,15 +23,24 @@
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <div class="apcai-help">Internal link akan disesuaikan otomatis dengan silo ini.</div>
+                    <div class="apcai-help">Internal link disesuaikan otomatis dengan silo ini.</div>
                 </div>
 
                 <div class="apcai-form-group">
-                    <label>Tahapan Funnel Konten</label>
+                    <label>Tahapan Funnel</label>
                     <select id="studio-funnel" class="apcai-select">
                         <option value="tofu">TOFU - Awareness & Edukasi</option>
                         <option value="mofu">MOFU - Review & Perbandingan</option>
                         <option value="bofu">BOFU - Closing & Penawaran</option>
+                    </select>
+                </div>
+
+                <div class="apcai-form-group">
+                    <label>Bahasa Utama Artikel</label>
+                    <select id="studio-primary-lang" class="apcai-select">
+                        <option value="id" <?php selected($settings['default_lang'] ?? '', 'id'); ?>>🇮🇩 Indonesia (ID)</option>
+                        <option value="ms" <?php selected($settings['default_lang'] ?? '', 'ms'); ?>>🇲🇾 Melayu (MS)</option>
+                        <option value="en" <?php selected($settings['default_lang'] ?? '', 'en'); ?>>🇬🇧 English (EN)</option>
                     </select>
                 </div>
             </div>
@@ -136,11 +145,15 @@
 
             <div id="studio-results-area" style="display:none;">
                 <div class="apcai-tabs">
-                    <div class="apcai-tab active" data-lang="id">🇮🇩 Versi Indonesia (ID)</div>
+                    <div class="apcai-tab active" data-lang="id">🇮🇩 Versi Utama (ID)</div>
+                    <div class="apcai-tab" data-lang="ms" style="display:none;">🇲🇾 Versi Melayu (MS)</div>
                     <div class="apcai-tab" data-lang="en" style="display:none;">🇬🇧 Versi English (EN)</div>
                 </div>
 
-                <div style="margin-bottom:15px;display:flex;gap:10px;">
+                <div style="margin-bottom:15px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <button id="btn-studio-translate-ms" class="apcai-btn apcai-btn-secondary" style="font-size:12px;">
+                        🇲🇾 Adaptasi ke Bahasa Melayu (MS)
+                    </button>
                     <button id="btn-studio-translate-en" class="apcai-btn apcai-btn-secondary" style="font-size:12px;">
                         🌐 Terjemahkan & Adaptasi ke English (EN)
                     </button>
@@ -176,10 +189,10 @@
                 <!-- Publish Actions -->
                 <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
                     <button id="btn-publish-both" class="apcai-btn apcai-btn-success" style="flex:1;">
-                        🚀 Terbitkan Semua (ID + EN)
+                        🚀 Terbitkan Semua Bahasa Aktif
                     </button>
                     <button id="btn-publish-primary" class="apcai-btn apcai-btn-primary">
-                        Terbitkan ID Saja
+                        Terbitkan Bahasa Utama Saja
                     </button>
                     <button id="btn-save-draft" class="apcai-btn apcai-btn-secondary">
                         Simpan DRAFT

@@ -161,6 +161,11 @@ class APCAI_Scheduler {
      * Eksekusi 1 Posting: Rotasi Kategori, Ambil Funneling, Injeksi Landing Page Link
      */
     public static function execute_one_post_job() {
+        @set_time_limit(300);
+        if (function_exists('wp_raise_memory_limit')) {
+            wp_raise_memory_limit('admin');
+        }
+
         global $wpdb;
         $settings = get_option('apcai_settings', []);
         $table_topics = APCAI_DB::table_topics();
@@ -240,7 +245,8 @@ class APCAI_Scheduler {
             return;
         }
 
-        $wpdb->update($table_topics, ['status' => 'used', 'updated_at' => current_time('mysql')], ['id' => $topic->id]);
+        // Tandai sementara sebagai processing
+        $wpdb->update($table_topics, ['status' => 'processing', 'updated_at' => current_time('mysql')], ['id' => $topic->id]);
 
         $default_lang = $settings['default_lang'] ?? 'id';
         $lang_mode    = $settings['lang_mode'] ?? 'dual';
@@ -251,6 +257,8 @@ class APCAI_Scheduler {
         $primary_res = APCAI_Generator::generate_primary_content($topic->title, $cat_id, $funnel_stage);
 
         if (is_wp_error($primary_res)) {
+            // Kembalikan status topik ke idea agar tidak hangus
+            $wpdb->update($table_topics, ['status' => 'idea', 'updated_at' => current_time('mysql')], ['id' => $topic->id]);
             $wpdb->insert($table_logs, [
                 'action_type' => 'scheduled_post',
                 'status'      => 'failed',
@@ -264,6 +272,7 @@ class APCAI_Scheduler {
         $post_id_primary = APCAI_Generator::save_article($primary_res, $default_lang, 0, $topic->id, '', $cat_id, $funnel_stage);
 
         if (is_wp_error($post_id_primary)) {
+            $wpdb->update($table_topics, ['status' => 'idea', 'updated_at' => current_time('mysql')], ['id' => $topic->id]);
             $wpdb->insert($table_logs, [
                 'action_type' => 'scheduled_post',
                 'status'      => 'failed',
@@ -272,6 +281,9 @@ class APCAI_Scheduler {
             ]);
             return;
         }
+
+        // Sukses tersimpan: tandai used
+        $wpdb->update($table_topics, ['status' => 'used', 'updated_at' => current_time('mysql')], ['id' => $topic->id]);
 
         $secondary_post_id = 0;
 

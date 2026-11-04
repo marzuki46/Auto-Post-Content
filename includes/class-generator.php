@@ -541,7 +541,19 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
         $link_instruction = $linking['instruction'];
 
         $default_lang = $settings['default_lang'] ?? 'id';
-        $lang_name = ($default_lang === 'en') ? 'English' : 'Bahasa Indonesia';
+        if ($default_lang === 'en') {
+            $lang_name = 'English';
+        } elseif ($default_lang === 'ms') {
+            $lang_name = 'Bahasa Melayu';
+        } else {
+            $lang_name = 'Bahasa Indonesia';
+        }
+
+        $word_count_min = max(300, (int)($settings['word_count_min'] ?? 800));
+        $word_count_max = max($word_count_min + 100, (int)($settings['word_count_max'] ?? 1300));
+        if (!empty($custom_options['word_count_min'])) $word_count_min = (int)$custom_options['word_count_min'];
+        if (!empty($custom_options['word_count_max'])) $word_count_max = (int)$custom_options['word_count_max'];
+
         $cat_obj = get_category($category_id);
         $cat_name = $cat_obj ? $cat_obj->name : 'General';
 
@@ -627,7 +639,12 @@ ATURAN WAJIB BRANDING & PENULISAN ALAMI (ANTI-AI PATTERN):
 8. HINDARI GARIS MENDATAR: JANGAN gunakan garis pemisah horizontal seperti '---', '***', atau '___' di antara bagian artikel (kecuali di dalam sintaks baris pemisah tabel Markdown). Transisi antar bagian harus mengalir alami lewat teks dan sub-judul.
 9. RITME KALIMAT ALAMI: Variasikan panjang kalimat (kombinasi kalimat pendek, sedang, dan lugas). Hindari kalimat majemuk berbelit-belit yang membosankan. Tulis dengan nada bicara praktisi berpengalaman yang ramah dan solutif.
 10. JANGAN SPAM BOLDING: Hindari menebalkan (**bold**) kata kunci secara berlebihan di setiap paragraf. Bolding hanya dipakai untuk 1-2 poin yang benar-benar krusial.
-11. GUNAKAN KATA 'CARA' (BUKAN 'PANDUAN'): Dalam pembuatan konten bahasa Indonesia, JANGAN gunakan kata 'Panduan' (seperti 'Panduan Lengkap...', 'Panduan Memulai...', 'Panduan Praktis...'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...'). Audiens Indonesia mencari di Google dengan kata 'Cara'.
+11. ATURAN TARGET JUMLAH KATA (WORD COUNT):
+    - Panjang total artikel WAJIB berada dalam rentang {$word_count_min} hingga {$word_count_max} KATA.
+    - Kembangkan setiap sub-heading secara mendalam dengan contoh nyata, rincian teknis, analisis komparasi, dan panduan langkah demi langkah agar memenuhi rentang jumlah kata ini secara proporsional tanpa mengulang-ulang kalimat filler.
+12. ATURAN BAHASA KHUSUS:
+    - Jika Bahasa Indonesia: JANGAN gunakan kata 'Panduan' pada judul atau sub-judul (WAJIB gunakan kata 'Cara').
+    - Jika Bahasa Melayu: Gunakan tatabahasa Bahasa Melayu baku standard (Malaysia/Brunei/Singapura), nada sopan, profesional, kosa kata rasmi seperti 'kaedah' atau 'cara', 'maklumat', 'pelanggan', 'kelebihan', dan elakkan istilah slanga / pasar.
 
 ATURAN STRUKTUR JSON:
 Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown wrapper dengan struktur:
@@ -752,6 +769,66 @@ CONTENT (MARKDOWN):
         if (isset($parsed['content_md'])) {
             $parsed['content_md'] = preg_replace('/^#\s+[^\n]+(?:\r?\n|$)/', '', trim($parsed['content_md']));
             // Hapus link fiktif example.com
+            $parsed['content_md'] = preg_replace('/\[(.*?)\]\(https?:\/\/(?:www\.)?example\.com[^\)]*\)/i', '$1', $parsed['content_md']);
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * Generate Konten Adaptasi Bahasa Melayu (Standard Malaysia / Brunei / Singapura)
+     */
+    public static function generate_malay_adaptation($source_title, $source_content, $source_excerpt = '', $source_keywords = []) {
+        $settings = get_option('apcai_settings', []);
+        $site_name = !empty($settings['site_name']) ? $settings['site_name'] : get_bloginfo('name');
+        $brand_voice = !empty($settings['brand_voice']) ? $settings['brand_voice'] : '';
+
+        $system_prompt = "Anda adalah Pakar Strategi Kandungan SEO & Penulis Salinan (Copywriter) Bahasa Melayu profesional mewakili {$site_name}.
+Tugasan: Terjemahkan dan adaptasikan artikel ke dalam BAHASA MELAYU standard yang lancar, menarik, berwibawa, dan dioptimumkan untuk carian Google (Malaysia/Nusantara) dengan mengekalkan sentuhan penjenamaan {$site_name}.
+
+PANDUAN PENULISAN BAHASA MELAYU (ANTI-AI PATTERN):
+1. Tatabahasa Standard & Semula Jadi: Gunakan Bahasa Melayu baku yang moden, mesra pelanggan, dan profesional ({$brand_voice}). Elakkan penggunaan istilah bahasa pasar atau slanga yang tidak rasmi.
+2. Adaptasi Kosa Kata: Gunakan istilah yang lazim di Malaysia (contoh: 'kereta'/'motosikal', 'tayar', 'servis berkala', 'harga tawaran', 'tempahan', 'maklumat lanjut', 'kaedah' atau 'cara mudah').
+3. Penjenamaan Asli: Sebutkan nama {$site_name} secara kontekstual dan elegan.
+4. Tanpa Pembuka Klise: JANGAN mulakan dengan frasa klise robot seperti 'Dalam era digital yang serba pantas...', 'Tidak dapat dinafikan bahawa...', atau 'Dalam artikel ini...'. Mulakan terus dengan fakta, pandangan pakar, atau penyelesaian isu pelanggan.
+5. Tanpa Sub-tajuk 'Kesimpulan': Gunakan sub-tajuk tindakan penutup yang relevan (Langkah Seterusnya / Nasihat Pakar).
+6. Tanpa Garisan Melintang: DILARANG menggunakan '---', '***', atau '___' sebagai pemisah bahagian.
+7. Struktur Markdown: Kekalkan semua sub-tajuk (##, ###), senarai poin, jadual perbandingan, dan pautan ke CTA rasmi.
+8. Format Output WAJIB JSON murni:
+{
+  \"title\": \"Tajuk artikel Bahasa Melayu yang memikat dan mesra SEO\",
+  \"slug\": \"slug-kata-kunci-melayu\",
+  \"seo_title\": \"Google Title Tag (maks 60 aksara)\",
+  \"seo_description\": \"Meta deskripsi Bahasa Melayu persuasif (maks 155 aksara)\",
+  \"excerpt\": \"Ringkasan artikel 2-3 ayat ringkas dan padat\",
+  \"keywords\": [\"kata kunci 1\", \"kata kunci 2\", \"kata kunci 3\", \"kata kunci 4\"],
+  \"content_md\": \"Kandungan penuh artikel dalam format Markdown tanpa garis pemisah horizontal...\"
+}";
+
+        $kw_str = is_array($source_keywords) ? implode(", ", $source_keywords) : (string)$source_keywords;
+        $user_prompt = "ARTIKEL SUMBER:
+TAJUK: \"\"\"" . substr($source_title, 0, 300) . "\"\"\"
+RINGKASAN: \"\"\"" . substr($source_excerpt, 0, 500) . "\"\"\"
+KATA KUNCI: \"\"\"" . substr($kw_str, 0, 300) . "\"\"\"
+KANDUNGAN (MARKDOWN):
+\"\"\"
+" . substr($source_content, 0, 45000) . "
+\"\"\"";
+
+        $model = $settings['model_writer'] ?? 'openai/gpt-4o';
+        $raw = APCAI_AI_Client::chat($system_prompt, $user_prompt, $model, 0.6);
+
+        if (is_wp_error($raw)) {
+            return $raw;
+        }
+
+        $parsed = APCAI_AI_Client::extract_json($raw);
+        if (is_wp_error($parsed)) {
+            return $parsed;
+        }
+
+        if (isset($parsed['content_md'])) {
+            $parsed['content_md'] = preg_replace('/^#\s+[^\n]+(?:\r?\n|$)/', '', trim($parsed['content_md']));
             $parsed['content_md'] = preg_replace('/\[(.*?)\]\(https?:\/\/(?:www\.)?example\.com[^\)]*\)/i', '$1', $parsed['content_md']);
         }
 
@@ -1059,39 +1136,19 @@ CONTENT (MARKDOWN):
             wp_set_post_tags($post_id, $data['keywords'], true);
         }
 
-        // Auto Download / Set Featured Image (WebP Compressed)
+        // Auto Download / Set Featured Image (WebP Compressed & Anti-Empty-Image Multi-Tier)
         $auto_thumb = $settings['auto_thumbnail'] ?? '1';
-        $thumb_source = $settings['thumbnail_source'] ?? 'bing'; // 'bing', 'pool', atau 'media'
-
-        if ($auto_thumb === '1' && class_exists('APCAI_Image_Manager')) {
-            $title = sanitize_text_field($data['title'] ?? '');
-            $alt_text = !empty($data['keywords'][0]) ? ($data['keywords'][0] . ' - ' . $title) : $title;
-            $caption  = !empty($data['excerpt']) ? $data['excerpt'] : $title;
-            $primary_kw = (!empty($data['keywords']) && is_array($data['keywords'])) ? reset($data['keywords']) : $title;
-
-            $attached = false;
-
-            // Opsi 1: Dari koleksi upload sendiri (Pool Koleksi Gambar Lokal)
-            if ($thumb_source === 'pool') {
-                $attached = APCAI_Image_Manager::attach_from_local_pool($post_id, $alt_text, $title, $caption);
-            }
-            // Opsi 2: Dari media WordPress yang pernah diupload sebelumnya
-            elseif ($thumb_source === 'media') {
-                $attached = APCAI_Image_Manager::attach_from_existing_media($post_id, $alt_text, $title, $caption, $primary_kw);
-            }
-
-            // Opsi 3 (Default & Fallback jika pool atau media kosong): Ambil dari Bing Image Search
-            if (!$attached) {
-                $search_kw = !empty($primary_kw) ? $primary_kw : $title;
-
-                APCAI_Image_Manager::attach_bing_featured_image(
-                    $post_id,
-                    $search_kw,
-                    $alt_text,
-                    $title,
-                    $caption
-                );
-            }
+        if (!empty($auto_thumb) && $auto_thumb !== '0' && class_exists('APCAI_Image_Manager')) {
+            $cat_obj = get_category($cat_id);
+            $cat_name = $cat_obj ? $cat_obj->name : '';
+            APCAI_Image_Manager::attach_featured_image_robust(
+                $post_id,
+                $title,
+                is_array($data['keywords'] ?? null) ? $data['keywords'] : [],
+                $excerpt ?: $title,
+                $translation_of,
+                $cat_name
+            );
         }
 
         // Instant Indexing Auto Ping (IndexNow & Google WebSub) jika status artikel publish

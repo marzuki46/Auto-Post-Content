@@ -156,11 +156,13 @@ class APCAI_AI_Client {
         $s = preg_replace('/\s*```$/', '', $s);
         $s = trim($s);
 
+        // Percobaan 1: decode langsung
         $decoded = json_decode($s, true);
         if ($decoded !== null) {
             return $decoded;
         }
 
+        // Percobaan 2: potong substring antara { dan }
         $start_obj = strpos($s, '{');
         $end_obj   = strrpos($s, '}');
         if ($start_obj !== false && $end_obj !== false && $end_obj > $start_obj) {
@@ -172,6 +174,7 @@ class APCAI_AI_Client {
             }
         }
 
+        // Percobaan 3: array list [ ... ]
         $start_arr = strpos($s, '[');
         $end_arr   = strrpos($s, ']');
         if ($start_arr !== false && $end_arr !== false && $end_arr > $start_arr) {
@@ -180,6 +183,53 @@ class APCAI_AI_Client {
             $decoded = json_decode($slice, true);
             if ($decoded !== null) {
                 return $decoded;
+            }
+        }
+
+        // Percobaan 4: Penanganan JSON terpotong (Truncated JSON Recovery)
+        if ($start_obj !== false) {
+            $incomplete = substr($s, $start_obj);
+            // Tutup string yang terbuka dan kurung kurawal
+            $repaired = rtrim($incomplete, " \t\n\r,");
+            $quotes_count = substr_count($repaired, '"') - substr_count($repaired, '\"');
+            if ($quotes_count % 2 !== 0) {
+                $repaired .= '"';
+            }
+            $open_braces = substr_count($repaired, '{') - substr_count($repaired, '}');
+            for ($i = 0; $i < $open_braces; $i++) {
+                $repaired .= '}';
+            }
+            $decoded = json_decode($repaired, true);
+            if ($decoded !== null && is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        // Percobaan 5: Ekstraksi fallback berbasis Regex jika json_decode tetap gagal
+        if (preg_match('/"title"\s*:\s*"([^"]+)"/i', $s, $m_title)) {
+            $fallback = [
+                'title'           => $m_title[1],
+                'slug'            => sanitize_title($m_title[1]),
+                'seo_title'       => $m_title[1],
+                'seo_description' => '',
+                'excerpt'         => '',
+                'keywords'        => [],
+                'content_md'      => '',
+            ];
+
+            if (preg_match('/"seo_title"\s*:\s*"([^"]+)"/i', $s, $m)) $fallback['seo_title'] = $m[1];
+            if (preg_match('/"seo_description"\s*:\s*"([^"]+)"/i', $s, $m)) $fallback['seo_description'] = $m[1];
+            if (preg_match('/"excerpt"\s*:\s*"([^"]+)"/i', $s, $m)) $fallback['excerpt'] = $m[1];
+            if (preg_match('/"content_md"\s*:\s*"(.*)/is', $s, $m_content)) {
+                $content = $m_content[1];
+                // Hapus penutup json jika ada di akhir
+                $content = preg_replace('/"\s*}\s*$/s', '', $content);
+                $content = str_replace(['\n', '\r', '\"', '\/'], ["\n", "\r", '"', '/'], $content);
+                $fallback['content_md'] = trim($content);
+            }
+
+            if (!empty($fallback['title']) && !empty($fallback['content_md'])) {
+                return $fallback;
             }
         }
 
