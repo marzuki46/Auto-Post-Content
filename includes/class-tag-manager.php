@@ -255,6 +255,25 @@ class APCAI_Tag_Manager {
             $knowledge_prompt = "\nBASIS DATA & INFORMASI TERKINI PERUSAHAAN (Update: {$knowledge_date}):\n\"\"\"\n{$knowledge_data}\n\"\"\"\n(Integrasikan data harga, promo, atau info resmi perusahaan di atas secara kontekstual ke dalam copywriting tag jika relevan).\n";
         }
 
+        // Ambil daftar artikel yang menempel pada tag ini untuk referensi konteks & anti kanibalisasi
+        $tag_term = get_term_by('name', $tag_name, 'post_tag');
+        $related_titles = [];
+        if ($tag_term && !is_wp_error($tag_term)) {
+            $tag_posts = get_posts([
+                'tag_id'         => $tag_term->term_id,
+                'posts_per_page' => 10,
+                'post_status'    => 'publish',
+                'fields'         => 'ids',
+            ]);
+            foreach ($tag_posts as $p_id) {
+                $related_titles[] = get_the_title($p_id);
+            }
+        }
+        $existing_posts_note = "";
+        if (!empty($related_titles)) {
+            $existing_posts_note = "\nDAFTAR ARTIKEL YANG SUDAH TERBIT DI BAWAH TAG INI:\n- " . implode("\n- ", $related_titles) . "\n(Catatan: Dilarang mengulang isi artikel di atas secara verbatim! Konten tag harus menjadi direktori agregator payung tingkat tinggi / Topic Cluster).\n";
+        }
+
         $system_prompt = "Anda adalah Senior Content Strategist & Copywriter profesional untuk {$site_name}.
 Tugas Anda menyusun COPYWRITING KHUSUS HALAMAN ARSIP TAG (Tag Archive Page) untuk topik: \"{$tag_name}\".
 Bahasa Output: {$lang_desc}.
@@ -267,20 +286,25 @@ ATURAN STRUKTUR & SEO HEADING PALING KETAT:
    - ## (H2) untuk judul bagian utama.
    - ### (H3) untuk sub-bagian penjelasan atau poin pendukung.
    - #### (H4) untuk FAQ (Pertanyaan Umum) atau detail teknis.
-2. FUNNEL FOCUS:
+2. ATURAN ANTI-KANIBALISASI & DUPLICATE CONTENT (KRUSIAL):
+   - Tag ini adalah HALAMAN HUB / CLUSTER AGREGATOR, BUKAN ARTIKEL TUNGGAL.
+   - Jika ada postingan blog dengan judul atau kata kunci serupa, jangan menulis ulang artikel tersebut!
+   - Posisi konten tag ini adalah intisari payung (overview kurasi), klasifikasi solusi, matriks evaluasi, dan pemandu navigasi pembaca menuju artikel-artikel spesifik di bawahnya.
+3. FUNNEL FOCUS:
    {$funnel_desc}
-3. TABEL DATA / KOMPARASI:
+4. TABEL DATA / KOMPARASI:
    Wajib sertakan minimal 1 tabel data Markdown yang rapi (| Kolom 1 | Kolom 2 |) yang membandingkan opsi, estimasi biaya, atau ringkasan solusi.
-4. ZERO ROBOTIC CLICHES:
+5. ZERO ROBOTIC CLICHES:
    - Dilarang membuka dengan kalimat klise: 'Di era digital saat ini...', 'Dalam artikel ini...', 'Tidak dapat dipungkiri bahwa...'. Mulai langsung dengan konteks nyata audiens.
    - Dilarang membuat sub-heading klise 'Kesimpulan' atau 'Penutup'. Gunakan sub-heading aksi nyata (Langkah Praktis / Nasihat Ahli).
    - Dilarang menggunakan garis pemisah mendatar (---, ***, ___).
-5. INTERNAL LINK & CALL TO ACTION:
+6. INTERNAL LINK & CALL TO ACTION:
    Sertakan link kontekstual ke Brand Resmi [{$site_name}]({$site_url}) dengan ajakan aksi (Call To Action) yang elegan di akhir tulisan.
 
 Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
 
         $user_prompt = "TAG / TOPIK: \"{$tag_name}\"\nNICHE: {$niche}\nBRAND: {$site_name}\nBRAND VOICE: {$brand_voice}\n" .
+            $existing_posts_note .
             $knowledge_prompt .
             "\nTulis konten copywriting tag lengkap sekarang:";
 
