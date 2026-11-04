@@ -6,6 +6,7 @@ class APCAI_Admin {
     public static function init() {
         add_action('admin_menu', [__CLASS__, 'register_menus']);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_assets']);
+        add_action('admin_init', [__CLASS__, 'send_anti_cache_headers']);
 
         // AJAX handlers
         add_action('wp_ajax_apcai_test_api', [__CLASS__, 'ajax_test_api']);
@@ -110,13 +111,34 @@ class APCAI_Admin {
         );
     }
 
+    public static function send_anti_cache_headers() {
+        $page = sanitize_text_field(wp_unslash($_GET['page'] ?? ''));
+        if (is_admin() && !empty($page) && str_starts_with($page, 'apcai')) {
+            if (!headers_sent()) {
+                nocache_headers();
+                header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0');
+                header('Pragma: no-cache');
+                header('Expires: Wed, 11 Jan 1984 05:00:00 GMT');
+                header('X-LiteSpeed-Cache-Control: no-cache');
+            }
+            if (defined('LSCWP_V')) {
+                do_action('litespeed_control_set_nocache', 'APC AI Admin Anti Cache');
+            }
+        }
+    }
+
     public static function enqueue_assets($hook) {
         if (strpos($hook, 'apcai') === false) {
             return;
         }
 
-        wp_enqueue_style('apcai-admin-style', APCAI_PLUGIN_URL . 'assets/css/admin.css', [], APCAI_VERSION);
-        wp_enqueue_script('apcai-admin-script', APCAI_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], APCAI_VERSION, true);
+        $css_file = APCAI_PLUGIN_DIR . 'assets/css/admin.css';
+        $js_file  = APCAI_PLUGIN_DIR . 'assets/js/admin.js';
+        $ver_css  = file_exists($css_file) ? (string) filemtime($css_file) : APCAI_VERSION;
+        $ver_js   = file_exists($js_file) ? (string) filemtime($js_file) : APCAI_VERSION;
+
+        wp_enqueue_style('apcai-admin-style', APCAI_PLUGIN_URL . 'assets/css/admin.css', [], $ver_css);
+        wp_enqueue_script('apcai-admin-script', APCAI_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], $ver_js, true);
 
         wp_localize_script('apcai-admin-script', 'apcai_vars', [
             'ajax_url' => admin_url('admin-ajax.php'),
@@ -171,6 +193,7 @@ class APCAI_Admin {
     }
 
     public static function page_schedule() {
+        wp_cache_delete('apcai_settings', 'options');
         $settings = get_option('apcai_settings', []);
         $slots = get_option('apcai_scheduled_slots_today', []);
         $categories = get_categories(['hide_empty' => false]);
@@ -196,6 +219,7 @@ class APCAI_Admin {
     }
 
     public static function page_settings() {
+        wp_cache_delete('apcai_settings', 'options');
         $settings = get_option('apcai_settings', []);
         include APCAI_PLUGIN_DIR . 'views/settings.php';
     }
@@ -226,6 +250,16 @@ class APCAI_Admin {
         check_ajax_referer('apcai_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
 
+        if (!headers_sent()) {
+            nocache_headers();
+            header('X-LiteSpeed-Cache-Control: no-cache');
+        }
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_control_set_nocache', 'APC AI Settings Save Ajax');
+        }
+
+        // Hapus cache object options agar selalu sinkron dengan database
+        wp_cache_delete('apcai_settings', 'options');
         $current = get_option('apcai_settings', []);
         $input = $_POST['settings'] ?? [];
 
@@ -239,14 +273,22 @@ class APCAI_Admin {
             }
         }
 
-        $current['schedule_enabled'] = !empty($input['schedule_enabled']) ? '1' : '0';
-        $current['auto_thumbnail'] = !empty($input['auto_thumbnail']) ? '1' : '0';
-        $current['enable_internal_links'] = !empty($input['enable_internal_links']) ? '1' : '0';
-        $current['enable_instant_indexing'] = !empty($input['enable_instant_indexing']) ? '1' : '0';
+        // HANYA update boolean keys jika kuncinya dikirim oleh form yang bersangkutan
+        $boolean_keys = ['schedule_enabled', 'auto_research_topics', 'auto_thumbnail', 'enable_internal_links', 'enable_instant_indexing'];
+        foreach ($boolean_keys as $b_key) {
+            if (array_key_exists($b_key, $input)) {
+                $current[$b_key] = (!empty($input[$b_key]) && $input[$b_key] !== '0') ? '1' : '0';
+            }
+        }
 
-        // Target Word Count Range
-        $current['word_count_min'] = max(300, absint($input['word_count_min'] ?? 800));
-        $current['word_count_max'] = max($current['word_count_min'] + 100, absint($input['word_count_max'] ?? 1300));
+        // Target Word Count Range (hanya jika ada di input)
+        if (isset($input['word_count_min'])) {
+            $current['word_count_min'] = max(300, absint($input['word_count_min']));
+        }
+        if (isset($input['word_count_max'])) {
+            $min = $current['word_count_min'] ?? 800;
+            $current['word_count_max'] = max($min + 100, absint($input['word_count_max']));
+        }
 
         // Sinkronisasi otomatis dengan plugin nerd-for-wp jika diset
         if (isset($input['nerd_email'])) {
@@ -263,7 +305,53 @@ class APCAI_Admin {
         update_option('apcai_settings', $current);
         APCAI_Scheduler::sync_schedule();
 
-        wp_send_json_success('Pengaturan berhasil disimpan!');
+        // Pembersihan Anti-Cache Menyeluruh
+        self::purge_all_caches();
+
+        wp_send_json_success('Pengaturan berhasil disimpan dan seluruh cache telah dibersihkan!');
+    }
+
+    /**
+     * Purge Seluruh Lapisan Cache di WordPress & Server
+     */
+    public static function purge_all_caches() {
+        // 1. WordPress Internal Cache & Options Cache
+        wp_cache_delete('apcai_settings', 'options');
+        wp_cache_delete('alloptions', 'options');
+        if (function_exists('wp_cache_flush')) {
+            @wp_cache_flush();
+        }
+
+        // 2. LiteSpeed Cache
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_purge_all');
+        }
+
+        // 3. WP Rocket
+        if (function_exists('rocket_clean_domain')) {
+            rocket_clean_domain();
+        }
+
+        // 4. W3 Total Cache
+        if (function_exists('w3tc_flush_all')) {
+            w3tc_flush_all();
+        }
+
+        // 5. WP Super Cache
+        if (function_exists('wp_cache_clean_cache')) {
+            global $file_prefix;
+            wp_cache_clean_cache($file_prefix, true);
+        }
+
+        // 6. Autoptimize
+        if (class_exists('autoptimizeCache') && method_exists('autoptimizeCache', 'clearall')) {
+            autoptimizeCache::clearall();
+        }
+
+        // 7. WP Fastest Cache
+        if (isset($GLOBALS['wp_fastest_cache']) && method_exists($GLOBALS['wp_fastest_cache'], 'deleteCache')) {
+            $GLOBALS['wp_fastest_cache']->deleteCache(true);
+        }
     }
 
     public static function ajax_brainstorm_topics() {

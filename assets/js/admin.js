@@ -11,38 +11,50 @@ jQuery(document).ready(function ($) {
         }, 3500);
     }
 
-    // Save Settings
-    $('#apcai-settings-form').on('submit', function (e) {
+    // Save Settings & Schedule (Form-Aware & Anti-Cache)
+    $(document).on('submit', '#apcai-settings-form, #apcai-schedule-form', function (e) {
         e.preventDefault();
-        const $btn = $(this).find('button[type="submit"]');
+        const $form = $(this);
+        const $btn = $form.find('button[type="submit"]');
         const originalText = $btn.html();
-        $btn.html('<span class="apcai-spinner"></span> Menyimpan...').prop('disabled', true);
+        $btn.html('<span class="apcai-spinner"></span> Menyimpan & Purge Cache...').prop('disabled', true);
 
-        const formData = $(this).serializeArray();
+        const formData = $form.serializeArray();
         const settings = {};
         $.each(formData, function (_, field) {
             settings[field.name] = field.value;
         });
 
-        settings['schedule_enabled'] = $('#schedule_enabled').is(':checked') ? 1 : 0;
-        settings['auto_thumbnail'] = $('#auto_thumbnail').length ? ($('#auto_thumbnail').is(':checked') ? 1 : 0) : ($('input[name="auto_thumbnail"]').is(':checked') ? 1 : 0);
-        settings['enable_internal_links'] = $('#enable_internal_links').is(':checked') ? 1 : 0;
-        settings['enable_instant_indexing'] = $('#enable_instant_indexing').length ? ($('#enable_instant_indexing').is(':checked') ? 1 : 0) : ($('input[name="enable_instant_indexing"]').is(':checked') ? 1 : 0);
-
-        $.post(ajaxurl, {
-            action: 'apcai_save_settings',
-            nonce: nonce,
-            settings: settings
-        }, function (res) {
-            $btn.html(originalText).prop('disabled', false);
-            if (res.success) {
-                showNotice(res.data, 'success');
-            } else {
-                showNotice(res.data || 'Gagal menyimpan', 'error');
+        // HANYA proses input checkbox/switch yang ADA di dalam form ini
+        $form.find('input[type="checkbox"]').each(function () {
+            const name = $(this).attr('name');
+            if (name) {
+                settings[name] = $(this).is(':checked') ? '1' : '0';
             }
-        }).fail(function () {
-            $btn.html(originalText).prop('disabled', false);
-            showNotice('Terjadi kesalahan koneksi.', 'error');
+        });
+
+        $.ajax({
+            url: ajaxurl + '?_t=' + Date.now(),
+            type: 'POST',
+            cache: false,
+            data: {
+                action: 'apcai_save_settings',
+                nonce: nonce,
+                settings: settings,
+                _nocache: Date.now()
+            },
+            success: function (res) {
+                $btn.html(originalText).prop('disabled', false);
+                if (res.success) {
+                    showNotice(res.data, 'success');
+                } else {
+                    showNotice(res.data || 'Gagal menyimpan', 'error');
+                }
+            },
+            error: function () {
+                $btn.html(originalText).prop('disabled', false);
+                showNotice('Terjadi kesalahan koneksi atau server timeout.', 'error');
+            }
         });
     });
 

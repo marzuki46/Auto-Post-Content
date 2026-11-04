@@ -4,7 +4,7 @@
         <h1><span class="dashicons dashicons-clock" style="font-size:28px;color:#2563eb;"></span> Auto Post Schedule & Penjadwalan</h1>
     </div>
 
-    <form id="apcai-settings-form">
+    <form id="apcai-schedule-form">
         <div class="apcai-card">
             <h2>Konfigurasi Penjadwalan Otomatis</h2>
 
