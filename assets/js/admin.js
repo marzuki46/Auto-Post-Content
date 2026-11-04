@@ -205,7 +205,8 @@ jQuery(document).ready(function ($) {
     let generatedIdData = null;
     let generatedEnData = null;
 
-    $('#btn-studio-generate-id').on('click', function (e) {
+    // Tahap 1: Buat Outline Terlebih Dahulu
+    $('#btn-studio-plan-outline').on('click', function (e) {
         e.preventDefault();
         const topic = $('#studio-topic').val().trim();
         if (!topic) {
@@ -214,7 +215,44 @@ jQuery(document).ready(function ($) {
         }
 
         const $btn = $(this);
-        $btn.html('<span class="apcai-spinner"></span> Menulis Artikel Silo & Injeksi Link...').prop('disabled', true);
+        $btn.html('<span class="apcai-spinner"></span> Merancang Blueprint Outline...').prop('disabled', true);
+
+        const payload = {
+            action: 'apcai_generate_outline_now',
+            nonce: nonce,
+            topic: topic,
+            category_id: $('#studio-category').val(),
+            funnel_stage: $('#studio-funnel').val(),
+        };
+
+        $.post(ajaxurl, payload, function (res) {
+            $btn.html('1. 📝 Buat Outline Dulu').prop('disabled', false);
+
+            if (res.success && res.data.formatted_text) {
+                $('#studio-custom-outline').val(res.data.formatted_text);
+                $('#studio-outline-wrapper').slideDown();
+                showNotice('Blueprint Outline berhasil dirancang! Silakan tinjau/edit, lalu klik "2. Tulis Konten Penuh".', 'success');
+            } else {
+                showNotice(res.data || 'Gagal merancang outline.', 'error');
+            }
+        }).fail(function () {
+            $btn.html('1. 📝 Buat Outline Dulu').prop('disabled', false);
+            showNotice('Koneksi timeout atau gagal merespons.', 'error');
+        });
+    });
+
+    // Tahap 2: Eksekusi Penulisan Konten Penuh dari Outline
+    $('#btn-studio-generate-id').on('click', function (e) {
+        e.preventDefault();
+        const topic = $('#studio-topic').val().trim();
+        if (!topic) {
+            showNotice('Masukkan topik atau paragraf awal terlebih dahulu.', 'error');
+            return;
+        }
+
+        const customOutline = $('#studio-custom-outline').val().trim();
+        const $btn = $(this);
+        $btn.html('<span class="apcai-spinner"></span> Mengembangkan Outline & Injeksi Link...').prop('disabled', true);
         $('#studio-loading').show();
         $('#studio-results-area').hide();
 
@@ -226,6 +264,7 @@ jQuery(document).ready(function ($) {
             funnel_stage: $('#studio-funnel').val(),
             keyword_prompt: $('#studio-kw-prompt').val(),
             content_prompt: $('#studio-content-prompt').val(),
+            custom_outline: customOutline,
             cta_type: $('#studio-cta-type').val(),
             cta_text: $('#studio-cta-text').val(),
             cta_target: $('#studio-cta-target').val(),
@@ -233,7 +272,7 @@ jQuery(document).ready(function ($) {
         };
 
         $.post(ajaxurl, payload, function (res) {
-            $btn.html('🚀 Generate Artikel Sekarang').prop('disabled', false);
+            $btn.html('2. 🚀 Tulis Konten Penuh').prop('disabled', false);
             $('#studio-loading').hide();
 
             if (res.success && res.data.result) {
@@ -241,12 +280,12 @@ jQuery(document).ready(function ($) {
                 generatedEnData = null;
                 renderStudioView('id');
                 $('#studio-results-area').fadeIn();
-                showNotice('Artikel Silo berhasil dibuat dengan internal link otomatis!', 'success');
+                showNotice('Artikel berhasil dikembangkan dari outline dengan tautan silo!', 'success');
             } else {
                 showNotice(res.data || 'Gagal membuat artikel.', 'error');
             }
         }).fail(function () {
-            $btn.html('🚀 Generate Artikel Sekarang').prop('disabled', false);
+            $btn.html('2. 🚀 Tulis Konten Penuh').prop('disabled', false);
             $('#studio-loading').hide();
             showNotice('Koneksi timeout atau gagal respon.', 'error');
         });

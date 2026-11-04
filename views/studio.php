@@ -87,15 +87,42 @@
                     <input type="text" id="studio-cta-target" class="apcai-input" value="<?php echo esc_attr($settings['cta_target'] ?? ''); ?>" placeholder="08123456789 atau https://domain.com/promo">
                 </div>
 
-                <div class="apcai-form-group" style="margin-bottom:0;">
+            <div class="apcai-form-group" style="margin-bottom:0;">
                     <label>Instruksi Khusus CTA</label>
                     <textarea id="studio-cta-instruction" class="apcai-textarea" rows="2"><?php echo esc_textarea($settings['cta_instruction'] ?? ''); ?></textarea>
                 </div>
             </div>
 
-            <button id="btn-studio-generate-id" class="apcai-btn apcai-btn-primary" style="width:100%;justify-content:center;font-size:15px;padding:12px;">
-                🚀 Generate Artikel Sekarang
-            </button>
+            <!-- Workflow 2 Tahap: Outline -> Full Content -->
+            <div style="background:#f8fafc;padding:16px;border-radius:6px;border:1px solid #cbd5e1;margin-bottom:16px;">
+                <h3 style="margin-top:0;font-size:14px;color:#0f172a;display:flex;align-items:center;gap:6px;">
+                    🧠 Alur Penulisan 2 Tahap (Sequential Thinking)
+                </h3>
+                <p style="font-size:12px;color:#64748b;margin:4px 0 12px 0;line-height:1.5;">
+                    <strong>Tahap 1:</strong> Buat blueprint outline terlebih dahulu untuk meninjau/mengedit angle dan sub-heading.<br>
+                    <strong>Tahap 2:</strong> Kembangkan outline terpilih menjadi artikel lengkap dan terstruktur.
+                </p>
+
+                <div style="display:flex;gap:10px;margin-bottom:12px;">
+                    <button id="btn-studio-plan-outline" class="apcai-btn apcai-btn-secondary" style="flex:1;justify-content:center;font-weight:600;">
+                        1. 📝 Buat Outline Dulu
+                    </button>
+                    <button id="btn-studio-generate-id" class="apcai-btn apcai-btn-primary" style="flex:1;justify-content:center;font-weight:600;">
+                        2. 🚀 Tulis Konten Penuh
+                    </button>
+                </div>
+
+                <div id="studio-outline-wrapper" style="display:none;margin-top:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="font-weight:600;font-size:13px;color:#1e293b;">Blueprint Outline (Dapat Diedit):</label>
+                        <span style="font-size:11px;color:#059669;font-weight:600;">✓ Outline Siap Dikembangkan</span>
+                    </div>
+                    <textarea id="studio-custom-outline" class="apcai-textarea" rows="8" placeholder="Outline akan muncul di sini setelah Anda mengklik 'Buat Outline Dulu', atau Anda dapat menuliskan outline sendiri secara langsung..."></textarea>
+                    <div class="apcai-help" style="margin-top:6px;font-size:11px;">
+                        Setiap sub-heading dan poin di atas akan dikembangkan secara detail dan mendalam pada Tahap 2.
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Right: Preview & Bilingual Studio -->

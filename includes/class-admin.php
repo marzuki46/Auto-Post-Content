@@ -11,6 +11,7 @@ class APCAI_Admin {
         add_action('wp_ajax_apcai_test_api', [__CLASS__, 'ajax_test_api']);
         add_action('wp_ajax_apcai_save_settings', [__CLASS__, 'ajax_save_settings']);
         add_action('wp_ajax_apcai_brainstorm_topics', [__CLASS__, 'ajax_brainstorm_topics']);
+        add_action('wp_ajax_apcai_generate_outline_now', [__CLASS__, 'ajax_generate_outline_now']);
         add_action('wp_ajax_apcai_generate_now', [__CLASS__, 'ajax_generate_now']);
         add_action('wp_ajax_apcai_translate_en_now', [__CLASS__, 'ajax_translate_en_now']);
         add_action('wp_ajax_apcai_publish_article', [__CLASS__, 'ajax_publish_article']);
@@ -277,6 +278,58 @@ class APCAI_Admin {
         wp_send_json_success($res);
     }
 
+    public static function ajax_generate_outline_now() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
+
+        if (!headers_sent()) {
+            nocache_headers();
+            header('X-LiteSpeed-Cache-Control: no-cache');
+        }
+        if (defined('LSCWP_V')) {
+            do_action('litespeed_control_set_nocache', 'APC AI Studio Outline Ajax');
+        }
+
+        $topic = sanitize_textarea_field(wp_unslash($_POST['topic'] ?? ''));
+        $category_id = absint($_POST['category_id'] ?? 1);
+        $funnel_stage = sanitize_text_field(wp_unslash($_POST['funnel_stage'] ?? 'tofu'));
+
+        if (empty($topic)) {
+            wp_send_json_error('Topik atau judul wajib diisi.');
+        }
+
+        $settings = get_option('apcai_settings', []);
+        $site_name = !empty($settings['site_name']) ? $settings['site_name'] : get_bloginfo('name');
+        $cat_obj = get_category($category_id);
+        $cat_name = $cat_obj ? $cat_obj->name : 'General';
+
+        $time_ctx = class_exists('APCAI_Agent_Engine') ? APCAI_Agent_Engine::get_time_context() : ['prompt' => ''];
+        $mem_ctx  = class_exists('APCAI_Agent_Engine') ? APCAI_Agent_Engine::get_memory_context($category_id, $topic) : ['prompt' => ''];
+
+        $blueprint = APCAI_Agent_Engine::plan_article_blueprint(
+            $topic,
+            $category_id,
+            $funnel_stage,
+            [
+                'site_name'     => $site_name,
+                'cat_name'      => $cat_name,
+                'time_prompt'   => $time_ctx['prompt'],
+                'memory_prompt' => $mem_ctx['prompt'],
+            ]
+        );
+
+        if (is_wp_error($blueprint)) {
+            wp_send_json_error($blueprint->get_error_message());
+        }
+
+        $formatted_text = APCAI_Agent_Engine::format_blueprint_instruction($blueprint);
+
+        wp_send_json_success([
+            'blueprint'      => $blueprint,
+            'formatted_text' => $formatted_text,
+        ]);
+    }
+
     public static function ajax_generate_now() {
         check_ajax_referer('apcai_admin_nonce', 'nonce');
         if (!current_user_can('manage_options')) wp_send_json_error('Unauthorized');
@@ -301,6 +354,7 @@ class APCAI_Admin {
         $opts = [
             'keyword_prompt'  => sanitize_textarea_field(wp_unslash($_POST['keyword_prompt'] ?? '')),
             'content_prompt'  => sanitize_textarea_field(wp_unslash($_POST['content_prompt'] ?? '')),
+            'custom_outline'  => sanitize_textarea_field(wp_unslash($_POST['custom_outline'] ?? '')),
             'cta_type'        => sanitize_text_field(wp_unslash($_POST['cta_type'] ?? '')),
             'cta_text'        => sanitize_text_field(wp_unslash($_POST['cta_text'] ?? '')),
             'cta_target'      => sanitize_text_field(wp_unslash($_POST['cta_target'] ?? '')),

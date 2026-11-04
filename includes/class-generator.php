@@ -562,7 +562,10 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
 
         // Eksekusi Sequential Thinking (Tahap 1: Planning Blueprint)
         $blueprint_instruction = "";
-        if (class_exists('APCAI_Agent_Engine')) {
+        if (!empty($custom_options['custom_outline'])) {
+            // Gunakan outline manual/custom yang diedit pengguna dari Tahap 1
+            $blueprint_instruction = "OUTLINE & STRUKTUR ARTIKEL DARI PENGGUNA (WAJIB DIIKUTI & DIKEMBANGKAN):\n\"\"\"\n" . trim($custom_options['custom_outline']) . "\n\"\"\"\n(Kembangkan setiap sub-heading dan poin-poin di atas secara mendalam dan berbobot tanpa mengurangi poin yang telah ditentukan).";
+        } elseif (class_exists('APCAI_Agent_Engine')) {
             $blueprint_res = APCAI_Agent_Engine::plan_article_blueprint(
                 $input_topic,
                 $category_id,
