@@ -16,27 +16,85 @@ class APCAI_Tag_Manager {
             add_filter('manage_post_tag_custom_column', [__CLASS__, 'render_tag_column'], 10, 3);
             add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_tag_scripts']);
 
-            // AJAX Generator & Save
+            // AJAX Handlers
             add_action('wp_ajax_apcai_generate_tag_copywriting', [__CLASS__, 'ajax_generate_tag_copywriting']);
             add_action('wp_ajax_apcai_save_tag_copywriting', [__CLASS__, 'ajax_save_tag_copywriting']);
+            add_action('wp_ajax_apcai_get_empty_tags', [__CLASS__, 'ajax_get_empty_tags']);
+            add_action('wp_ajax_apcai_batch_generate_single_tag', [__CLASS__, 'ajax_batch_generate_single_tag']);
+            add_action('wp_ajax_apcai_toggle_tag_schedule', [__CLASS__, 'ajax_toggle_tag_schedule']);
         }
     }
 
     /**
-     * Enqueue asset pendukung untuk halaman edit tag WordPress
+     * Enqueue asset pendukung untuk edit tag WordPress & menu Tag Copywriting
      */
     public static function enqueue_tag_scripts($hook) {
-        if ($hook === 'term.php' || $hook === 'edit-tags.php') {
-            $screen = get_current_screen();
-            if ($screen && $screen->taxonomy === 'post_tag') {
-                wp_enqueue_style('apcai-admin-style', APCAI_PLUGIN_URL . 'assets/css/admin.css', [], APCAI_VERSION);
-                wp_enqueue_script('apcai-tag-script', APCAI_PLUGIN_URL . 'assets/js/tag-manager.js', ['jquery'], APCAI_VERSION, true);
-                wp_localize_script('apcai-tag-script', 'apcai_tag_vars', [
-                    'ajax_url' => admin_url('admin-ajax.php'),
-                    'nonce'    => wp_create_nonce('apcai_tag_nonce'),
-                ]);
+        $screen = get_current_screen();
+        $is_tag_screen = ($hook === 'term.php' || $hook === 'edit-tags.php') && ($screen && $screen->taxonomy === 'post_tag');
+        $is_plugin_tag_page = (strpos($hook, 'apcai-tags') !== false);
+
+        if ($is_tag_screen || $is_plugin_tag_page) {
+            wp_enqueue_style('apcai-admin-style', APCAI_PLUGIN_URL . 'assets/css/admin.css', [], APCAI_VERSION);
+            wp_enqueue_script('apcai-tag-script', APCAI_PLUGIN_URL . 'assets/js/tag-manager.js', ['jquery'], (string)filemtime(APCAI_PLUGIN_DIR . 'assets/js/tag-manager.js'), true);
+            wp_localize_script('apcai-tag-script', 'apcai_tag_vars', [
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce'    => wp_create_nonce('apcai_tag_nonce'),
+            ]);
+        }
+    }
+
+    /**
+     * Ambil statistik tag keseluruhan
+     */
+    public static function get_tags_stats(): array {
+        $tags = get_terms([
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+        ]);
+
+        if (empty($tags) || is_wp_error($tags)) {
+            return ['total' => 0, 'filled' => 0, 'empty' => 0];
+        }
+
+        $total  = count($tags);
+        $filled = 0;
+        foreach ($tags as $t) {
+            $content = get_term_meta($t->term_id, '_apcai_tag_copywriting', true);
+            if (!empty(trim($content))) {
+                $filled++;
             }
         }
+
+        return [
+            'total'  => $total,
+            'filled' => $filled,
+            'empty'  => max(0, $total - $filled),
+        ];
+    }
+
+    /**
+     * Ambil daftar tag yang belum ada kontennya
+     */
+    public static function get_empty_tags(): array {
+        $tags = get_terms([
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+        ]);
+
+        $empty = [];
+        if (!empty($tags) && !is_wp_error($tags)) {
+            foreach ($tags as $t) {
+                $content = get_term_meta($t->term_id, '_apcai_tag_copywriting', true);
+                if (empty(trim($content))) {
+                    $empty[] = [
+                        'id'    => $t->term_id,
+                        'name'  => $t->name,
+                        'count' => $t->count,
+                    ];
+                }
+            }
+        }
+        return $empty;
     }
 
     /**
@@ -80,7 +138,7 @@ class APCAI_Tag_Manager {
                 <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:8px;padding:20px;max-width:850px;">
                     <p style="margin-top:0;font-size:13px;color:#475569;line-height:1.6;">
                         <strong>Strategi Funnel Tag (MOFU):</strong> Halaman tag adalah jembatan pertimbangan (MOFU) antara edukasi (TOFU) dan halaman jualan (BOFU).
-                        Konten ini otomatis tampil <strong>di bawah daftar postingan</strong> arsip tag. Sistem mengunci aturan ketat: <strong>Hanya ada 1 H1 di halaman (Judul Tag Tema)</strong>, dan copywriting ini tersusun hierarkis dari <code>H2</code> $\rightarrow$ <code>H3</code> $\rightarrow$ <code>H4</code> lengkap dengan tabel komparasi dan CTA closing.
+                        Konten ini otomatis tampil <strong>di bawah daftar postingan</strong> arsip tag. Sistem mengunci aturan ketat: <strong>Hanya ada 1 H1 di halaman (Judul Tag Tema)</strong>, dan copywriting ini tersusun hierarkis dari <code>H2</code> $\rightarrow$ <code>H3</code> $\rightarrow$ <code>H4</code> lengkap dengan tabel komparasi, data perusahaan, dan CTA closing.
                     </p>
 
                     <div style="display:grid;grid-template-columns: 1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
@@ -123,7 +181,7 @@ class APCAI_Tag_Manager {
                         </label>
                         <textarea name="_apcai_tag_copywriting" id="apcai_tag_copywriting" rows="12" class="apcai-textarea" style="width:100%;font-family:monospace;font-size:13px;"><?php echo esc_textarea($content); ?></textarea>
                         <div class="apcai-help" style="margin-top:6px;">
-                            Bisa diedit manual kapan saja. Tag heading dijamin mulai dari <code>&lt;h2&gt;</code> ke bawah untuk memastikan standar <strong>1 H1 per Halaman</strong>.
+                            Bisa diedit manual kapan saja. Tag heading dijamin mulai dari <code>&lt;h2&gt;</code> ke bawah untuk memastikan standar <strong>1 H1 per Halaman</strong>. Frasa kunci Yoast SEO otomatis diatur sesuai nama tag.
                         </div>
                     </div>
                 </div>
@@ -149,10 +207,17 @@ class APCAI_Tag_Manager {
         if (isset($_POST['apcai_tag_funnel'])) {
             update_term_meta($term_id, '_apcai_tag_funnel', sanitize_text_field($_POST['apcai_tag_funnel']));
         }
+
+        // Auto input ke Frasa Kunci Yoast SEO & Rank Math
+        $term = get_term($term_id, 'post_tag');
+        if ($term && !is_wp_error($term)) {
+            update_term_meta($term_id, '_yoast_wpseo_focuskw', $term->name);
+            update_term_meta($term_id, 'rank_math_focus_keyword', $term->name);
+        }
     }
 
     /**
-     * AI Generator Khusus Copywriting Tag
+     * AI Generator Khusus Copywriting Tag (Mendukung Data Pengetahuan Perusahaan)
      */
     public static function generate_tag_copywriting(string $tag_name, string $lang = 'id', string $length = 'medium', string $funnel = 'mofu'): string|WP_Error {
         $settings  = get_option('apcai_settings', []);
@@ -182,6 +247,14 @@ class APCAI_Tag_Manager {
             default => 'MOFU (Middle of Funnel - Rekomendasi): Audiens sedang membandingkan opsi atau mencari solusi terbaik seputar tag ini. Berikan perbandingan objektif, tabel pertimbangan, kelebihan/kekurangan, dan jembatan ke solusi resmi ' . $site_name . '.',
         };
 
+        // Integrasi Basis Data & Informasi Terkini Perusahaan
+        $knowledge_data = trim($settings['knowledge_data'] ?? '');
+        $knowledge_date = trim($settings['knowledge_updated_date'] ?? date_i18n('d F Y'));
+        $knowledge_prompt = "";
+        if (!empty($knowledge_data)) {
+            $knowledge_prompt = "\nBASIS DATA & INFORMASI TERKINI PERUSAHAAN (Update: {$knowledge_date}):\n\"\"\"\n{$knowledge_data}\n\"\"\"\n(Integrasikan data harga, promo, atau info resmi perusahaan di atas secara kontekstual ke dalam copywriting tag jika relevan).\n";
+        }
+
         $system_prompt = "Anda adalah Senior Content Strategist & Copywriter profesional untuk {$site_name}.
 Tugas Anda menyusun COPYWRITING KHUSUS HALAMAN ARSIP TAG (Tag Archive Page) untuk topik: \"{$tag_name}\".
 Bahasa Output: {$lang_desc}.
@@ -207,7 +280,9 @@ ATURAN STRUKTUR & SEO HEADING PALING KETAT:
 
 Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
 
-        $user_prompt = "TAG / TOPIK: \"{$tag_name}\"\nNICHE: {$niche}\nBRAND: {$site_name}\nBRAND VOICE: {$brand_voice}\n\nTulis konten copywriting tag lengkap sekarang:";
+        $user_prompt = "TAG / TOPIK: \"{$tag_name}\"\nNICHE: {$niche}\nBRAND: {$site_name}\nBRAND VOICE: {$brand_voice}\n" .
+            $knowledge_prompt .
+            "\nTulis konten copywriting tag lengkap sekarang:";
 
         $model = $settings['model_writer'] ?? 'openai/gpt-4o';
         $raw = APCAI_AI_Client::chat($system_prompt, $user_prompt, $model, 0.6);
@@ -292,7 +367,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
     }
 
     /**
-     * AJAX: Generate Copywriting Tag
+     * AJAX: Generate Copywriting Tag Individual
      */
     public static function ajax_generate_tag_copywriting() {
         check_ajax_referer('apcai_tag_nonce', 'nonce');
@@ -322,18 +397,112 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
             wp_send_json_error($res->get_error_message());
         }
 
-        // Auto-save jika tag_id valid
         if ($tag_id > 0) {
             update_term_meta($tag_id, '_apcai_tag_copywriting', $res);
             update_term_meta($tag_id, '_apcai_tag_lang', $lang);
             update_term_meta($tag_id, '_apcai_tag_length', $length);
             update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
+
+            // Auto input frasa kunci utama Yoast & Rank Math
+            update_term_meta($tag_id, '_yoast_wpseo_focuskw', $tag_name);
+            update_term_meta($tag_id, 'rank_math_focus_keyword', $tag_name);
         }
 
         wp_send_json_success([
             'content'    => $res,
             'word_count' => str_word_count(strip_tags($res)),
             'message'    => 'Copywriting tag berhasil di-generate dan disimpan!',
+        ]);
+    }
+
+    /**
+     * AJAX: Ambil seluruh daftar tag kosong untuk batch runner
+     */
+    public static function ajax_get_empty_tags() {
+        check_ajax_referer('apcai_tag_nonce', 'nonce');
+        if (!current_user_can('manage_categories')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $empty = self::get_empty_tags();
+        wp_send_json_success([
+            'tags'  => $empty,
+            'total' => count($empty),
+        ]);
+    }
+
+    /**
+     * AJAX: Proses 1 tag dalam batch queue
+     */
+    public static function ajax_batch_generate_single_tag() {
+        check_ajax_referer('apcai_tag_nonce', 'nonce');
+        if (!current_user_can('manage_categories')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $tag_id   = absint($_POST['tag_id'] ?? 0);
+        $tag_name = sanitize_text_field(wp_unslash($_POST['tag_name'] ?? ''));
+        $lang     = sanitize_text_field(wp_unslash($_POST['lang'] ?? 'id'));
+        $length   = sanitize_text_field(wp_unslash($_POST['length'] ?? 'medium'));
+        $funnel   = sanitize_text_field(wp_unslash($_POST['funnel'] ?? 'mofu'));
+
+        if ($tag_id <= 0 && !empty($tag_name)) {
+            $t = get_term_by('name', $tag_name, 'post_tag');
+            if ($t) $tag_id = $t->term_id;
+        }
+
+        if (empty($tag_name) && $tag_id > 0) {
+            $t = get_term($tag_id, 'post_tag');
+            if ($t && !is_wp_error($t)) $tag_name = $t->name;
+        }
+
+        if (empty($tag_name) || $tag_id <= 0) {
+            wp_send_json_error('Tag tidak valid.');
+        }
+
+        $res = self::generate_tag_copywriting($tag_name, $lang, $length, $funnel);
+        if (is_wp_error($res)) {
+            wp_send_json_error($res->get_error_message());
+        }
+
+        update_term_meta($tag_id, '_apcai_tag_copywriting', $res);
+        update_term_meta($tag_id, '_apcai_tag_lang', $lang);
+        update_term_meta($tag_id, '_apcai_tag_length', $length);
+        update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
+
+        // Auto input ke frasa kunci Yoast SEO
+        update_term_meta($tag_id, '_yoast_wpseo_focuskw', $tag_name);
+        update_term_meta($tag_id, 'rank_math_focus_keyword', $tag_name);
+
+        wp_send_json_success([
+            'tag_id'     => $tag_id,
+            'tag_name'   => $tag_name,
+            'word_count' => str_word_count(strip_tags($res)),
+            'lang'       => strtoupper($lang),
+            'funnel'     => strtoupper($funnel),
+        ]);
+    }
+
+    /**
+     * AJAX: Toggle background auto-schedule untuk tag
+     */
+    public static function ajax_toggle_tag_schedule() {
+        check_ajax_referer('apcai_tag_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $enabled = !empty($_POST['enabled']) ? 1 : 0;
+        $settings = get_option('apcai_settings', []);
+        $settings['tag_schedule_enabled'] = $enabled;
+        if (isset($_POST['lang'])) $settings['tag_default_lang'] = sanitize_text_field($_POST['lang']);
+        if (isset($_POST['length'])) $settings['tag_default_length'] = sanitize_text_field($_POST['length']);
+        if (isset($_POST['funnel'])) $settings['tag_default_funnel'] = sanitize_text_field($_POST['funnel']);
+        update_option('apcai_settings', $settings);
+
+        wp_send_json_success([
+            'enabled' => $enabled,
+            'message' => $enabled ? 'Auto-Schedule Tag berhasil diaktifkan!' : 'Auto-Schedule Tag dinonaktifkan.',
         ]);
     }
 
@@ -361,6 +530,59 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($tag_id, '_apcai_tag_length', $length);
         update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
 
+        $term = get_term($tag_id, 'post_tag');
+        if ($term && !is_wp_error($term)) {
+            update_term_meta($tag_id, '_yoast_wpseo_focuskw', $term->name);
+            update_term_meta($tag_id, 'rank_math_focus_keyword', $term->name);
+        }
+
         wp_send_json_success('Konten tag berhasil diperbarui.');
+    }
+
+    /**
+     * Langkah Cron Background: Otomatis mengisi 1 tag kosong saat dipanggil oleh scheduler
+     */
+    public static function cron_step_tag_generator(): bool {
+        $settings = get_option('apcai_settings', []);
+        if (empty($settings['tag_schedule_enabled'])) {
+            return false;
+        }
+
+        $empty_tags = self::get_empty_tags();
+        if (empty($empty_tags)) {
+            return false;
+        }
+
+        // Ambil 1 tag kosong teratas
+        $target = $empty_tags[0];
+        $lang   = $settings['tag_default_lang'] ?? 'id';
+        $length = $settings['tag_default_length'] ?? 'medium';
+        $funnel = $settings['tag_default_funnel'] ?? 'mofu';
+
+        $res = self::generate_tag_copywriting($target['name'], $lang, $length, $funnel);
+        if (is_wp_error($res)) {
+            return false;
+        }
+
+        update_term_meta($target['id'], '_apcai_tag_copywriting', $res);
+        update_term_meta($target['id'], '_apcai_tag_lang', $lang);
+        update_term_meta($target['id'], '_apcai_tag_length', $length);
+        update_term_meta($target['id'], '_apcai_tag_funnel', $funnel);
+
+        // Auto input ke frasa kunci Yoast SEO
+        update_term_meta($target['id'], '_yoast_wpseo_focuskw', $target['name']);
+        update_term_meta($target['id'], 'rank_math_focus_keyword', $target['name']);
+
+        // Catat ke Log
+        global $wpdb;
+        $table_logs = APCAI_DB::table_logs();
+        $wpdb->insert($table_logs, [
+            'action_type' => 'tag_copywriting',
+            'status'      => 'success',
+            'message'     => "Auto-Schedule berhasil membuat copywriting tag: '{$target['name']}' (" . str_word_count(strip_tags($res)) . " kata | " . strtoupper($lang) . " | " . strtoupper($funnel) . ")",
+            'created_at'  => current_time('mysql'),
+        ]);
+
+        return true;
     }
 }

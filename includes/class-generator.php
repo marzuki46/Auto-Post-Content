@@ -1209,6 +1209,25 @@ Format Output WAJIB JSON murni:
             update_post_meta($post_id, '_yoast_wpseo_metadesc', $data['seo_description']);
             update_post_meta($post_id, 'rank_math_description', $data['seo_description']);
         }
+
+        // Auto Input Frasa Kunci Utama (Focus Keyphrase) Yoast SEO & Rank Math
+        $focus_kw = '';
+        if (!empty($data['focus_keyword'])) {
+            $focus_kw = sanitize_text_field($data['focus_keyword']);
+        } elseif (!empty($formatted_keywords[0])) {
+            $focus_kw = $formatted_keywords[0];
+        } elseif ($topic_id > 0) {
+            $t_topics = APCAI_DB::table_topics();
+            $topic_row = $wpdb->get_row($wpdb->prepare("SELECT primary_keyword FROM {$t_topics} WHERE id = %d", $topic_id));
+            if ($topic_row && !empty($topic_row->primary_keyword)) {
+                $focus_kw = $topic_row->primary_keyword;
+            }
+        }
+        if (!empty($focus_kw)) {
+            update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_kw);
+            update_post_meta($post_id, 'rank_math_focus_keyword', $focus_kw);
+        }
+
         if (!empty($formatted_keywords)) {
             wp_set_post_tags($post_id, $formatted_keywords, true);
         }

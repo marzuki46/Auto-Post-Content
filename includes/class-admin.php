@@ -94,6 +94,15 @@ class APCAI_Admin {
 
         add_submenu_page(
             'apcai-dashboard',
+            APCAI_I18n::t('Tag Copywriting Hub', 'Tag Copywriting Hub'),
+            APCAI_I18n::t('Tag Copywriting', 'Tag Copywriting'),
+            'manage_options',
+            'apcai-tags',
+            [__CLASS__, 'page_tags']
+        );
+
+        add_submenu_page(
+            'apcai-dashboard',
             APCAI_I18n::t('Pengaturan AI & Prompt', 'AI & System Settings'),
             APCAI_I18n::t('Pengaturan', 'Settings'),
             'manage_options',
@@ -216,6 +225,10 @@ class APCAI_Admin {
             }
         }
         include APCAI_PLUGIN_DIR . 'views/gallery.php';
+    }
+
+    public static function page_tags() {
+        include APCAI_PLUGIN_DIR . 'views/tags.php';
     }
 
     public static function page_settings() {

@@ -344,5 +344,10 @@ class APCAI_Scheduler {
             ]),
             'created_at'  => current_time('mysql'),
         ]);
+
+        // Auto-Generate Tag Copywriting (Background Cron Step) jika diaktifkan
+        if (class_exists('APCAI_Tag_Manager')) {
+            APCAI_Tag_Manager::cron_step_tag_generator();
+        }
     }
 }
