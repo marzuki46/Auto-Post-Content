@@ -1,10 +1,11 @@
 <?php
 /**
  * Plugin Name: Auto Post Content AI & Topic Generator
- * Plugin URI: https://github.com/marzuki46/Auto-Post-Content
- * Description: Plugin WordPress canggih untuk riset topik AI, auto-generate artikel SEO mendalam (1 bahasa atau 2 bahasa ID & EN), integrasi 9Router/OpenAI, Entity Keywords, Custom CTA WhatsApp/Link, dan penjadwalan otomatis (jam terjadwal atau random harian).
- * Version: 1.2.7
- * Author: Marzuki Team
+ * Plugin URI: https://trimarzuki.my.id/
+ * Description: Enterprise WordPress AI automation engine for intelligent topic research, in-depth multi-funnel SEO articles (ID & EN), direct Google Gemini & 9Router/OpenAI API integration, entity-based topical authority, custom WhatsApp & affiliate CTA anchors, and resilient background scheduling.
+ * Version: 1.2.8
+ * Author: Marzuki
+ * Author URI: https://trimarzuki.my.id/
  * Text Domain: auto-post-content
  * Domain Path: /languages
  * License: GPL-2.0+
@@ -18,14 +19,14 @@ defined('ABSPATH') || exit;
 if (version_compare(PHP_VERSION, '8.3.0', '<')) {
     add_action('admin_notices', function () {
         echo '<div class="notice notice-error"><p>' .
-            esc_html__('Plugin Auto Post Content memerlukan PHP versi 8.3 ke atas demi keamanan dan performa.', 'auto-post-content') .
-            ' ' . sprintf(esc_html__('Versi aktif server Anda: %s', 'auto-post-content'), esc_html(PHP_VERSION)) .
+            esc_html__('Auto Post Content plugin requires PHP 8.3 or higher for optimal security and speed.', 'auto-post-content') .
+            ' ' . sprintf(esc_html__('Current active server version: %s', 'auto-post-content'), esc_html(PHP_VERSION)) .
             '</p></div>';
     });
     return;
 }
 
-define('APCAI_VERSION', '1.2.7');
+define('APCAI_VERSION', '1.2.8');
 define('APCAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('APCAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('APCAI_PLUGIN_FILE', __FILE__);

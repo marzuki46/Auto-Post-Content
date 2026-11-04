@@ -4,11 +4,12 @@ defined('ABSPATH') || exit;
 class APCAI_I18n {
 
     /**
-     * Deteksi bahasa aktif pada dashboard WordPress user
+     * Bahasa aktif (Default ke English untuk seluruh antarmuka)
      */
     public static function get_locale(): string {
-        $locale = function_exists('get_user_locale') ? get_user_locale() : get_locale();
-        if (str_starts_with(strtolower($locale), 'id')) {
+        $settings = get_option('apcai_settings', []);
+        $ui_lang  = $settings['admin_ui_lang'] ?? 'en';
+        if ($ui_lang === 'id') {
             return 'id';
         }
         return 'en';
@@ -19,7 +20,7 @@ class APCAI_I18n {
     }
 
     /**
-     * Terjemahkan string secara instan berdasarkan bahasa dashboard
+     * Terjemahkan string secara instan (prioritas English)
      */
     public static function t(string $id_text, string $en_text): string {
         return self::is_en() ? $en_text : $id_text;
