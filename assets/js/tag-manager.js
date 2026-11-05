@@ -28,11 +28,19 @@ jQuery(document).ready(function ($) {
     });
 
     // Toggle Tag Schedule (Background Cron)
-    $('#toggle_tag_schedule').on('change', function () {
-        const isChecked = $(this).is(':checked') ? 1 : 0;
-        const lang   = $('#bulk_tag_lang').val() || 'id';
-        const length = $('#bulk_tag_length').val() || 'medium';
-        const funnel = $('#bulk_tag_funnel').val() || 'mofu';
+    $('#toggle_tag_schedule, #tag_schedule_daily_count, #tag_schedule_execution_mode').on('change', function () {
+        const isChecked = $('#toggle_tag_schedule').is(':checked') ? 1 : 0;
+        const lang       = $('#bulk_tag_lang').val() || 'id';
+        const length     = $('#bulk_tag_length').val() || 'medium';
+        const funnel     = $('#bulk_tag_funnel').val() || 'mofu';
+        const dailyCount = $('#tag_schedule_daily_count').val() || 3;
+        const execMode   = $('#tag_schedule_execution_mode').val() || 'with_post';
+
+        if (isChecked) {
+            $('#tag_schedule_quota_box').slideDown(200);
+        } else {
+            $('#tag_schedule_quota_box').slideUp(200);
+        }
 
         $.post(ajaxurl, {
             action: 'apcai_toggle_tag_schedule',
@@ -41,6 +49,8 @@ jQuery(document).ready(function ($) {
             lang: lang,
             length: length,
             funnel: funnel,
+            daily_count: dailyCount,
+            exec_mode: execMode,
         }, function (res) {
             if (res.success) {
                 if (typeof showNotice === 'function') {

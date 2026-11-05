@@ -101,23 +101,52 @@ $all_tags = get_terms([
             </div>
         </div>
 
-        <!-- Background Auto-Schedule Toggle Switch -->
-        <div style="background:#f8fafc;padding:16px 20px;border-radius:8px;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-            <div>
-                <label for="toggle_tag_schedule" style="font-weight:700;color:#0f172a;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px;">
-                    ⏱️ <?php echo esc_html(APCAI_I18n::t('Jadwalkan Penulisan Tag Otomatis di Background (Cron)', 'Auto-Schedule Tag Generation in Background (Cron)')); ?>
+        <!-- Background Auto-Schedule Toggle Switch & Daily Quota -->
+        <div style="background:#f8fafc;padding:16px 20px;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div>
+                    <label for="toggle_tag_schedule" style="font-weight:700;color:#0f172a;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px;">
+                        ⏱️ <?php echo esc_html(APCAI_I18n::t('Jadwalkan Penulisan Tag Otomatis di Background (Cron)', 'Auto-Schedule Tag Generation in Background (Cron)')); ?>
+                    </label>
+                    <div class="apcai-help" style="margin:2px 0 0 0;">
+                        <?php echo esc_html(APCAI_I18n::t(
+                            'Jika ON, sistem otomatis membuatkan copywriting tag kosong secara bertahap saat jadwal posting cron berjalan.',
+                            'When ON, the scheduler automatically generates copywriting for empty tags incrementally during routine cron runs.'
+                        )); ?>
+                    </div>
+                </div>
+                <label class="apcai-switch">
+                    <input type="checkbox" id="toggle_tag_schedule" value="1" <?php checked($tag_schedule_enabled); ?>>
+                    <span class="apcai-slider"></span>
                 </label>
-                <div class="apcai-help" style="margin:2px 0 0 0;">
-                    <?php echo esc_html(APCAI_I18n::t(
-                        'Jika ON, sistem otomatis mengisi 1-2 tag kosong setiap kali jadwal auto-post berjalan tanpa perlu membuka halaman ini.',
-                        'When ON, the scheduler automatically generates copywriting for empty tags in background during routine cron runs.'
-                    )); ?>
+            </div>
+
+            <!-- Kuota Tag Per Hari & Mode Eksekusi -->
+            <div id="tag_schedule_quota_box" style="display:<?php echo $tag_schedule_enabled ? 'grid' : 'none'; ?>;grid-template-columns: 1fr 1fr;gap:16px;padding-top:12px;border-top:1px dashed #cbd5e1;">
+                <div>
+                    <label style="font-weight:600;font-size:12px;color:#334155;display:block;margin-bottom:4px;">
+                        🎯 <?php echo esc_html(APCAI_I18n::t('Target Kuota Tag Per Hari (Daily Quota):', 'Daily Tag Generation Quota:')); ?>
+                    </label>
+                    <select id="tag_schedule_daily_count" class="apcai-select" style="width:100%;">
+                        <option value="1" <?php selected($settings['tag_schedule_daily_count'] ?? 3, 1); ?>>1 tag per hari</option>
+                        <option value="2" <?php selected($settings['tag_schedule_daily_count'] ?? 3, 2); ?>>2 tag per hari</option>
+                        <option value="3" <?php selected($settings['tag_schedule_daily_count'] ?? 3, 3); ?>>3 tag per hari (Direkomendasikan)</option>
+                        <option value="5" <?php selected($settings['tag_schedule_daily_count'] ?? 3, 5); ?>>5 tag per hari</option>
+                        <option value="10" <?php selected($settings['tag_schedule_daily_count'] ?? 3, 10); ?>>10 tag per hari</option>
+                    </select>
+                    <div class="apcai-help" style="margin-top:4px;">Membatasi pembuatan tag agar organik dan tidak membebani limit token AI.</div>
+                </div>
+                <div>
+                    <label style="font-weight:600;font-size:12px;color:#334155;display:block;margin-bottom:4px;">
+                        🎲 <?php echo esc_html(APCAI_I18n::t('Ritme Eksekusi Background:', 'Execution Rhythm:')); ?>
+                    </label>
+                    <select id="tag_schedule_execution_mode" class="apcai-select" style="width:100%;">
+                        <option value="with_post" <?php selected($settings['tag_schedule_execution_mode'] ?? 'with_post', 'with_post'); ?>>Tiap kali artikel baru terbit (Alami)</option>
+                        <option value="hourly_jitter" <?php selected($settings['tag_schedule_execution_mode'] ?? 'with_post', 'hourly_jitter'); ?>>Terjadwal acak harian terpisah</option>
+                    </select>
+                    <div class="apcai-help" style="margin-top:4px;">Mengacak waktu pembaruan tag agar tampak alami seperti diedit manusia.</div>
                 </div>
             </div>
-            <label class="apcai-switch">
-                <input type="checkbox" id="toggle_tag_schedule" value="1" <?php checked($tag_schedule_enabled); ?>>
-                <span class="apcai-slider"></span>
-            </label>
         </div>
 
         <!-- Action Buttons -->

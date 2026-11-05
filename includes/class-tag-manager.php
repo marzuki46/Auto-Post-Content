@@ -522,11 +522,13 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         if (isset($_POST['lang'])) $settings['tag_default_lang'] = sanitize_text_field($_POST['lang']);
         if (isset($_POST['length'])) $settings['tag_default_length'] = sanitize_text_field($_POST['length']);
         if (isset($_POST['funnel'])) $settings['tag_default_funnel'] = sanitize_text_field($_POST['funnel']);
+        if (isset($_POST['daily_count'])) $settings['tag_schedule_daily_count'] = max(1, min(20, (int)$_POST['daily_count']));
+        if (isset($_POST['exec_mode'])) $settings['tag_schedule_execution_mode'] = sanitize_text_field($_POST['exec_mode']);
         update_option('apcai_settings', $settings);
 
         wp_send_json_success([
             'enabled' => $enabled,
-            'message' => $enabled ? 'Auto-Schedule Tag berhasil diaktifkan!' : 'Auto-Schedule Tag dinonaktifkan.',
+            'message' => $enabled ? 'Pengaturan Auto-Schedule Tag berhasil disimpan!' : 'Auto-Schedule Tag dinonaktifkan.',
         ]);
     }
 
@@ -564,12 +566,24 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
     }
 
     /**
-     * Langkah Cron Background: Otomatis mengisi 1 tag kosong saat dipanggil oleh scheduler
+     * Langkah Cron Background: Otomatis mengisi tag kosong sesuai kuota harian
      */
     public static function cron_step_tag_generator(): bool {
         $settings = get_option('apcai_settings', []);
         if (empty($settings['tag_schedule_enabled'])) {
             return false;
+        }
+
+        // Cek kuota harian tag yang sudah dibuat hari ini
+        $today = date_i18n('Y-m-d');
+        $tracker = get_option('apcai_tag_daily_tracker', ['date' => $today, 'count' => 0]);
+        if ($tracker['date'] !== $today) {
+            $tracker = ['date' => $today, 'count' => 0];
+        }
+
+        $daily_limit = max(1, min(20, (int)($settings['tag_schedule_daily_count'] ?? 3)));
+        if ($tracker['count'] >= $daily_limit) {
+            return false; // Kuota hari ini sudah terpenuhi secara organik
         }
 
         $empty_tags = self::get_empty_tags();
@@ -597,13 +611,17 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($target['id'], '_yoast_wpseo_focuskw', $target['name']);
         update_term_meta($target['id'], 'rank_math_focus_keyword', $target['name']);
 
+        // Update kuota tracker hari ini
+        $tracker['count']++;
+        update_option('apcai_tag_daily_tracker', $tracker);
+
         // Catat ke Log
         global $wpdb;
         $table_logs = APCAI_DB::table_logs();
         $wpdb->insert($table_logs, [
             'action_type' => 'tag_copywriting',
             'status'      => 'success',
-            'message'     => "Auto-Schedule berhasil membuat copywriting tag: '{$target['name']}' (" . str_word_count(strip_tags($res)) . " kata | " . strtoupper($lang) . " | " . strtoupper($funnel) . ")",
+            'message'     => "Auto-Schedule berhasil membuat copywriting tag: '{$target['name']}' ({$tracker['count']}/{$daily_limit} hari ini | " . str_word_count(strip_tags($res)) . " kata | " . strtoupper($lang) . " | " . strtoupper($funnel) . ")",
             'created_at'  => current_time('mysql'),
         ]);
 
