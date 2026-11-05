@@ -35,6 +35,9 @@ class APCAI_Admin {
         add_action('wp_ajax_apcai_scan_missing_keywords', [__CLASS__, 'ajax_scan_missing_keywords']);
         add_action('wp_ajax_apcai_fix_single_keyword', [__CLASS__, 'ajax_fix_single_keyword']);
 
+        // Clear Activity Logs AJAX
+        add_action('wp_ajax_apcai_clear_logs', [__CLASS__, 'ajax_clear_logs']);
+
         // Filter kolom di All Posts WP
         add_filter('manage_posts_columns', [__CLASS__, 'add_custom_post_columns']);
         add_action('manage_posts_custom_column', [__CLASS__, 'render_custom_post_columns'], 10, 2);
@@ -244,8 +247,21 @@ class APCAI_Admin {
     public static function page_logs() {
         global $wpdb;
         $t_logs = APCAI_DB::table_logs();
-        $logs = $wpdb->get_results("SELECT * FROM $t_logs ORDER BY id DESC LIMIT 50");
+        $logs = $wpdb->get_results("SELECT * FROM $t_logs ORDER BY id DESC LIMIT 100");
         include APCAI_PLUGIN_DIR . 'views/logs.php';
+    }
+
+    public static function ajax_clear_logs() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        global $wpdb;
+        $t_logs = APCAI_DB::table_logs();
+        $wpdb->query("TRUNCATE TABLE $t_logs");
+
+        wp_send_json_success('Semua riwayat log berhasil dibersihkan.');
     }
 
     // ----------------------------------------------------
@@ -838,6 +854,15 @@ class APCAI_Admin {
             update_term_meta($id, '_yoast_wpseo_focuskw', $target_kw);
             update_term_meta($id, 'rank_math_focus_keyword', $target_kw);
 
+            // Catat ke log
+            $t_logs = APCAI_DB::table_logs();
+            $wpdb->insert($t_logs, [
+                'action_type' => 'seo_backfill',
+                'status'      => 'success',
+                'message'     => "Injeksi Frasa Kunci Yoast Tag: '{$term->name}' -> '{$target_kw}'",
+                'created_at'  => current_time('mysql'),
+            ]);
+
             wp_send_json_success([
                 'type'    => 'tag',
                 'id'      => $id,
@@ -895,11 +920,13 @@ class APCAI_Admin {
             wp_set_post_tags($id, [$formatted_tag], true);
         }
 
-        // Update post modified timestamp agar sitemap & perayap mendeteksi pembaruan
-        wp_update_post([
-            'ID' => $id,
-            'post_modified'     => current_time('mysql'),
-            'post_modified_gmt' => current_time('mysql', 1),
+        // Catat ke riwayat log aktivitas
+        $t_logs = APCAI_DB::table_logs();
+        $wpdb->insert($t_logs, [
+            'action_type' => 'seo_backfill',
+            'status'      => 'success',
+            'message'     => "Injeksi Frasa Kunci Yoast Post #{$id}: '{$post->post_title}' -> '{$target_kw}'",
+            'created_at'  => current_time('mysql'),
         ]);
 
         wp_send_json_success([

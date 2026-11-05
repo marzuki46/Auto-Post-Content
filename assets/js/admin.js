@@ -583,6 +583,33 @@ jQuery(document).ready(function ($) {
         });
     });
 
+    // Clear Activity Logs Trigger
+    $('#btn-clear-logs').on('click', function (e) {
+        e.preventDefault();
+        if (!confirm('Apakah Anda yakin ingin menghapus seluruh riwayat log aktivitas? Tindakan ini tidak dapat dibatalkan.')) {
+            return;
+        }
+
+        const $btn = $(this);
+        $btn.prop('disabled', true).html('<span class="apcai-spinner"></span> Menghapus...');
+
+        $.post(ajaxurl, {
+            action: 'apcai_clear_logs',
+            nonce: nonce
+        }, function (res) {
+            $btn.prop('disabled', false).html('🗑️ Bersihkan Semua Log');
+            if (res.success) {
+                $('#table-logs-body').html('<tr><td colspan="5" style="text-align:center;padding:40px;color:#64748b;">Belum ada log eksekusi tercatat.</td></tr>');
+                showNotice(res.data, 'success');
+            } else {
+                showNotice(res.data || 'Gagal membersihkan log.', 'error');
+            }
+        }).fail(function () {
+            $btn.prop('disabled', false).html('🗑️ Bersihkan Semua Log');
+            showNotice('Error koneksi server.', 'error');
+        });
+    });
+
     // ----------------------------------------------------
     // SEO Focus Keyphrase Auto-Injector (Backfill Tool)
     // ----------------------------------------------------
@@ -688,11 +715,12 @@ jQuery(document).ready(function ($) {
             },
             success: function (res) {
                 missingProcessed++;
-                processNextMissingKeywordItem();
+                // Jeda alami acak 800ms - 1500ms agar aman bagi server
+                setTimeout(processNextMissingKeywordItem, Math.floor(Math.random() * 700) + 800);
             },
             error: function () {
                 missingProcessed++;
-                processNextMissingKeywordItem();
+                setTimeout(processNextMissingKeywordItem, 1000);
             }
         });
     }
