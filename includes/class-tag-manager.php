@@ -498,6 +498,23 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($tag_id, '_yoast_wpseo_focuskw', $tag_name);
         update_term_meta($tag_id, 'rank_math_focus_keyword', $tag_name);
 
+        // Catat ke Log dengan Link URL yang bisa diklik
+        global $wpdb;
+        $tag_term = get_term($tag_id, 'post_tag');
+        $tag_url = ($tag_term && !is_wp_error($tag_term)) ? get_term_link($tag_term) : '';
+        $url_link = (!empty($tag_url) && !is_wp_error($tag_url)) ? " • <a href='" . esc_url($tag_url) . "' target='_blank' style='color:#2563eb;text-decoration:underline;'>View Tag Archive &rarr;</a>" : '';
+        $edit_url = get_edit_term_link($tag_id, 'post_tag');
+        $edit_link = !empty($edit_url) ? " • <a href='" . esc_url($edit_url) . "' target='_blank' style='color:#64748b;text-decoration:underline;'>Edit &rarr;</a>" : '';
+
+        $word_count = str_word_count(strip_tags($res));
+        $table_logs = APCAI_DB::table_logs();
+        $wpdb->insert($table_logs, [
+            'action_type' => 'tag_copywriting',
+            'status'      => 'success',
+            'message'     => "Generated copywriting for Tag: <strong>{$tag_name}</strong> ({$word_count} words | Lang: " . strtoupper($lang) . " | Funnel: " . strtoupper($funnel) . "){$url_link}{$edit_link}",
+            'created_at'  => current_time('mysql'),
+        ]);
+
         wp_send_json_success([
             'tag_id'     => $tag_id,
             'tag_name'   => $tag_name,
@@ -615,13 +632,18 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         $tracker['count']++;
         update_option('apcai_tag_daily_tracker', $tracker);
 
-        // Catat ke Log
+        // Catat ke Log dengan Link URL yang bisa diklik
         global $wpdb;
+        $tag_term = get_term($target['id'], 'post_tag');
+        $tag_url = ($tag_term && !is_wp_error($tag_term)) ? get_term_link($tag_term) : '';
+        $url_link = (!empty($tag_url) && !is_wp_error($tag_url)) ? " • <a href='" . esc_url($tag_url) . "' target='_blank' style='color:#2563eb;text-decoration:underline;'>View Tag Archive &rarr;</a>" : '';
+
+        $word_count = str_word_count(strip_tags($res));
         $table_logs = APCAI_DB::table_logs();
         $wpdb->insert($table_logs, [
             'action_type' => 'tag_copywriting',
             'status'      => 'success',
-            'message'     => "Auto-Schedule berhasil membuat copywriting tag: '{$target['name']}' ({$tracker['count']}/{$daily_limit} hari ini | " . str_word_count(strip_tags($res)) . " kata | " . strtoupper($lang) . " | " . strtoupper($funnel) . ")",
+            'message'     => "Auto-Scheduled Tag copywriting generated: <strong>{$target['name']}</strong> ({$tracker['count']}/{$daily_limit} today | {$word_count} words | Lang: " . strtoupper($lang) . " | Funnel: " . strtoupper($funnel) . "){$url_link}",
             'created_at'  => current_time('mysql'),
         ]);
 

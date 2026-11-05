@@ -328,11 +328,16 @@ class APCAI_Scheduler {
         $secondary_post_id = !empty($adapted_ids) ? reset($adapted_ids) : 0;
         $adapted_summary = !empty($adapted_ids) ? ' & Adaptasi [' . implode(', ', array_map(fn($k, $v) => strtoupper($k) . " #{$v}", array_keys($adapted_ids), $adapted_ids)) . ']' : '';
 
+        $primary_url = get_permalink($post_id_primary);
+        $primary_link_html = (!empty($primary_url) && !is_wp_error($primary_url)) ? " • <a href='" . esc_url($primary_url) . "' target='_blank' style='color:#2563eb;text-decoration:underline;'>View Post &rarr;</a>" : '';
+        $edit_url = get_edit_post_link($post_id_primary);
+        $edit_link_html = !empty($edit_url) ? " • <a href='" . esc_url($edit_url) . "' target='_blank' style='color:#64748b;text-decoration:underline;'>Edit &rarr;</a>" : '';
+
         // Catat Log Sukses
         $wpdb->insert($table_logs, [
             'action_type' => 'scheduled_post',
             'status'      => 'success',
-            'message'     => "Berhasil posting artikel #{$post_id_primary} ({$default_lang} | Kategori #{$cat_id} | Funnel: " . strtoupper($funnel_stage) . ")" . $adapted_summary,
+            'message'     => "Published article #{$post_id_primary}: <strong>" . esc_html($primary_res['title'] ?? $topic->title) . "</strong> (Lang: " . strtoupper($default_lang) . " | Category #{$cat_id} | Funnel: " . strtoupper($funnel_stage) . "){$primary_link_html}{$edit_link_html}" . $adapted_summary,
             'data'        => wp_json_encode([
                 'topic_id'         => $topic->id,
                 'topic_title'      => $topic->title,

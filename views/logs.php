@@ -35,12 +35,12 @@
                         <td><span class="apcai-badge apcai-badge-blue"><?php echo esc_html($l->action_type); ?></span></td>
                         <td>
                             <?php if ($l->status === 'success'): ?>
-                                <span class="apcai-badge apcai-badge-green">Sukses</span>
+                                <span class="apcai-badge apcai-badge-green">Success</span>
                             <?php else: ?>
-                                <span class="apcai-badge apcai-badge-red"><?php echo esc_html($l->status); ?></span>
+                                <span class="apcai-badge apcai-badge-red"><?php echo esc_html(strtoupper($l->status)); ?></span>
                             <?php endif; ?>
                         </td>
-                        <td><?php echo esc_html($l->message); ?></td>
+                        <td style="line-height:1.6;font-size:13px;"><?php echo wp_kses_post($l->message); ?></td>
                     </tr>
                     <?php endforeach; ?>
                 <?php else: ?>

@@ -855,12 +855,17 @@ class APCAI_Admin {
             update_term_meta($id, '_yoast_wpseo_focuskw', $target_kw);
             update_term_meta($id, 'rank_math_focus_keyword', $target_kw);
 
+            $tag_url = get_term_link($term);
+            $tag_link_html = (!empty($tag_url) && !is_wp_error($tag_url)) ? " • <a href='" . esc_url($tag_url) . "' target='_blank' style='color:#2563eb;text-decoration:underline;'>View Tag Archive &rarr;</a>" : '';
+            $edit_url = get_edit_term_link($id, 'post_tag');
+            $edit_link_html = !empty($edit_url) ? " • <a href='" . esc_url($edit_url) . "' target='_blank' style='color:#64748b;text-decoration:underline;'>Edit &rarr;</a>" : '';
+
             // Catat ke log
             $t_logs = APCAI_DB::table_logs();
             $wpdb->insert($t_logs, [
                 'action_type' => 'seo_backfill',
                 'status'      => 'success',
-                'message'     => "Injeksi Frasa Kunci Yoast Tag: '{$term->name}' -> '{$target_kw}'",
+                'message'     => "Injected SEO Focus Keyphrase to Tag: <strong>{$term->name}</strong> &rarr; Target: <code>{$target_kw}</code>{$tag_link_html}{$edit_link_html}",
                 'created_at'  => current_time('mysql'),
             ]);
 
@@ -960,11 +965,16 @@ class APCAI_Admin {
         clean_post_cache($id);
 
         // Catat ke riwayat log aktivitas
+        $post_url = get_permalink($id);
+        $post_link_html = (!empty($post_url) && !is_wp_error($post_url)) ? " • <a href='" . esc_url($post_url) . "' target='_blank' style='color:#2563eb;text-decoration:underline;'>View Post &rarr;</a>" : '';
+        $edit_url = get_edit_post_link($id);
+        $edit_link_html = !empty($edit_url) ? " • <a href='" . esc_url($edit_url) . "' target='_blank' style='color:#64748b;text-decoration:underline;'>Edit &rarr;</a>" : '';
+
         $t_logs = APCAI_DB::table_logs();
         $wpdb->insert($t_logs, [
             'action_type' => 'seo_backfill',
             'status'      => 'success',
-            'message'     => "Injeksi Frasa Kunci Yoast Post #{$id}: '{$post->post_title}' -> '{$target_kw}' (Modified: {$formatted_mod} [Mode: {$date_mode}])",
+            'message'     => "Injected SEO Focus Keyphrase to Post #{$id}: <strong>{$post->post_title}</strong> &rarr; Target: <code>{$target_kw}</code> (Modified Date: {$formatted_mod} [Strategy: {$date_mode}]){$post_link_html}{$edit_link_html}",
             'created_at'  => current_time('mysql'),
         ]);
 
