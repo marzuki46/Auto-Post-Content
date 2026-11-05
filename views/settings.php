@@ -404,9 +404,57 @@
             </div>
         </div>
 
-        <!-- 7. Status Pembaruan Sistem (Cloud OTA Status) -->
+        <!-- 7. Focus Keyphrase & SEO Backfill Utility (Bulk Injector) -->
         <div class="apcai-card">
-            <h2><?php echo esc_html(APCAI_I18n::t('7. Status Sistem & Pembaruan Cloud Otomatis', '7. System Status & Pro Cloud Updates')); ?></h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('7. SEO Focus Keyphrase Auto-Injector (Yoast & Rank Math)', '7. SEO Focus Keyphrase Auto-Injector (Yoast & Rank Math)')); ?></h2>
+            <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
+                <?php echo esc_html(APCAI_I18n::t(
+                    'Pindai seluruh postingan dan tag lama yang target keyword-nya masih kosong. Fitur ini otomatis menyuntikkan Frasa Kunci Utama (Focus Keyphrase) ke Yoast SEO dan Rank Math, lalu memperbarui status post.',
+                    'Scan existing published posts and tags that are missing SEO target keywords. Automatically injects Primary Focus Keyphrases into Yoast SEO & Rank Math and re-syncs post metadata.'
+                )); ?>
+            </p>
+
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+                    <div>
+                        <div style="font-weight:700;color:#0f172a;font-size:14px;">
+                            🎯 <?php echo esc_html(APCAI_I18n::t('Pindai & Suntikkan Keyword Target Kosong', 'Scan & Auto-Fill Missing Focus Keyphrases')); ?>
+                        </div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px;">
+                            <?php echo esc_html(APCAI_I18n::t(
+                                'Mencocokkan keyword dari tag artikel, bank topik AI, atau mengekstrak entitas utama dari judul.',
+                                'Matches keywords from existing post tags, AI topic database, or extracts core entities from titles.'
+                            )); ?>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" id="btn-scan-missing-keywords" class="apcai-btn apcai-btn-secondary">
+                            🔍 <?php echo esc_html(APCAI_I18n::t('Pindai Konten Kosong', 'Scan Missing Content')); ?>
+                        </button>
+                        <button type="button" id="btn-start-fix-keywords" class="apcai-btn apcai-btn-primary" style="display:none;">
+                            ⚡ <?php echo esc_html(APCAI_I18n::t('Mulai Isi Semua Keyword', 'Start Auto-Fill & Update')); ?>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Bar & Status Log -->
+                <div id="missing-kw-progress-wrapper" style="display:none;margin-top:16px;">
+                    <div style="background:#e2e8f0;border-radius:20px;height:12px;overflow:hidden;position:relative;">
+                        <div id="missing-kw-progress-bar" style="background:linear-gradient(90deg, #10b981, #059669);height:100%;width:0%;transition:width 0.3s ease;"></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-top:6px;">
+                        <span id="missing-kw-current-text">Menyiapkan antrean...</span>
+                        <span id="missing-kw-percent-text">0%</span>
+                    </div>
+                </div>
+
+                <div id="missing-kw-scan-summary" style="display:none;margin-top:12px;font-size:13px;padding:10px 14px;border-radius:6px;background:#ffffff;border:1px solid #cbd5e1;"></div>
+            </div>
+        </div>
+
+        <!-- 8. Status Pembaruan Sistem (Cloud OTA Status) -->
+        <div class="apcai-card">
+            <h2><?php echo esc_html(APCAI_I18n::t('8. Status Sistem & Pembaruan Cloud Otomatis', '8. System Status & Pro Cloud Updates')); ?></h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 <?php echo esc_html(APCAI_I18n::t(
                     'Sistem terhubung langsung ke cloud release channel resmi. Peningkatan model AI, algoritma indexing, dan patch keamanan diterapkan otomatis.',

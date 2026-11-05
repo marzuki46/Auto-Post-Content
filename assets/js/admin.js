@@ -582,4 +582,118 @@ jQuery(document).ready(function ($) {
             }
         });
     });
+
+    // ----------------------------------------------------
+    // SEO Focus Keyphrase Auto-Injector (Backfill Tool)
+    // ----------------------------------------------------
+    let missingQueue = [];
+    let missingTotal = 0;
+    let missingProcessed = 0;
+    let isFixingKeywords = false;
+
+    $('#btn-scan-missing-keywords').on('click', function (e) {
+        e.preventDefault();
+        const $btn = $(this);
+        const $startBtn = $('#btn-start-fix-keywords');
+        const $summary = $('#missing-kw-scan-summary');
+        const $progressWrapper = $('#missing-kw-progress-wrapper');
+
+        $btn.prop('disabled', true).html('<span class="apcai-spinner"></span> Memindai Post & Tag...');
+        $startBtn.hide();
+        $progressWrapper.hide();
+        $summary.show().html('Sedang menganalisis basis data WordPress untuk mencari keyword kosong...');
+
+        $.post(ajaxurl, {
+            action: 'apcai_scan_missing_keywords',
+            nonce: nonce
+        }, function (res) {
+            $btn.prop('disabled', false).html('🔍 Pindai Konten Kosong');
+            if (res.success && res.data) {
+                missingQueue = res.data.items || [];
+                missingTotal = missingQueue.length;
+                missingProcessed = 0;
+
+                if (missingTotal === 0) {
+                    $summary.html('<span style="color:#10b981;font-weight:700;">🎉 Sempurna! Semua postingan dan tag sudah memiliki Focus Keyphrase Yoast / Rank Math.</span>');
+                } else {
+                    $summary.html(
+                        'Ditemukan <strong>' + missingTotal + ' item</strong> yang target keyword-nya kosong (' +
+                        res.data.posts_count + ' Postingan, ' + res.data.tags_count + ' Tag). ' +
+                        'Klik tombol di samping untuk mulai mengisi dan memperbarui metadata otomatis.'
+                    );
+                    $startBtn.show().text('⚡ Mulai Isi Semua Keyword (' + missingTotal + ')');
+                }
+            } else {
+                $summary.html('<span style="color:#ef4444;">Gagal memindai: ' + (res.data || 'Error') + '</span>');
+            }
+        }).fail(function () {
+            $btn.prop('disabled', false).html('🔍 Pindai Konten Kosong');
+            $summary.html('<span style="color:#ef4444;">Terjadi kesalahan jaringan atau server timeout.</span>');
+        });
+    });
+
+    $('#btn-start-fix-keywords').on('click', function (e) {
+        e.preventDefault();
+        if (isFixingKeywords || missingQueue.length === 0) return;
+
+        isFixingKeywords = true;
+        const $startBtn = $(this);
+        const $scanBtn = $('#btn-scan-missing-keywords');
+        const $progressWrapper = $('#missing-kw-progress-wrapper');
+        const $summary = $('#missing-kw-scan-summary');
+
+        $startBtn.prop('disabled', true);
+        $scanBtn.prop('disabled', true);
+        $progressWrapper.slideDown(200);
+        $summary.html('<span style="color:#2563eb;font-weight:600;">Memproses input keyword & memperbarui postingan... Jangan tutup halaman ini.</span>');
+
+        processNextMissingKeywordItem();
+    });
+
+    function processNextMissingKeywordItem() {
+        if (!isFixingKeywords) return;
+
+        if (missingQueue.length === 0) {
+            isFixingKeywords = false;
+            $('#missing-kw-progress-bar').css('width', '100%');
+            $('#missing-kw-percent-text').text('100%');
+            $('#missing-kw-current-text').text('Selesai!');
+            $('#btn-scan-missing-keywords').prop('disabled', false);
+            $('#btn-start-fix-keywords').hide().prop('disabled', false);
+            $('#missing-kw-scan-summary').html(
+                '<span style="color:#10b981;font-weight:700;">🎉 Berhasil! Sebanyak ' + missingProcessed + ' postingan & tag telah diisi Focus Keyphrase Yoast & Rank Math dan diperbarui.</span>'
+            );
+            if (typeof showNotice === 'function') {
+                showNotice('Berhasil memperbarui semua target keyword SEO!', 'success');
+            }
+            return;
+        }
+
+        const item = missingQueue.shift();
+        const percent = Math.round((missingProcessed / missingTotal) * 100);
+        $('#missing-kw-progress-bar').css('width', percent + '%');
+        $('#missing-kw-percent-text').text(percent + '%');
+        $('#missing-kw-current-text').html(
+            '[' + item.type.toUpperCase() + '] Memproses: <strong>\"' + item.title + '\"</strong> (' + (missingProcessed + 1) + '/' + missingTotal + ')...'
+        );
+
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'apcai_fix_single_keyword',
+                nonce: nonce,
+                item_type: item.type,
+                item_id: item.id
+            },
+            success: function (res) {
+                missingProcessed++;
+                processNextMissingKeywordItem();
+            },
+            error: function () {
+                missingProcessed++;
+                processNextMissingKeywordItem();
+            }
+        });
+    }
 });

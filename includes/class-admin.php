@@ -31,6 +31,10 @@ class APCAI_Admin {
         add_action('wp_ajax_apcai_upload_pool_images', [__CLASS__, 'ajax_upload_pool_images']);
         add_action('wp_ajax_apcai_delete_pool_image', [__CLASS__, 'ajax_delete_pool_image']);
 
+        // Backfill Missing SEO Focus Keywords (Posts & Tags)
+        add_action('wp_ajax_apcai_scan_missing_keywords', [__CLASS__, 'ajax_scan_missing_keywords']);
+        add_action('wp_ajax_apcai_fix_single_keyword', [__CLASS__, 'ajax_fix_single_keyword']);
+
         // Filter kolom di All Posts WP
         add_filter('manage_posts_columns', [__CLASS__, 'add_custom_post_columns']);
         add_action('manage_posts_custom_column', [__CLASS__, 'render_custom_post_columns'], 10, 2);
@@ -745,6 +749,165 @@ class APCAI_Admin {
 
         $res = APCAI_Updater::force_check_update();
         wp_send_json_success($res);
+    }
+
+    /**
+     * AJAX: Scan posts & tags yang belum memiliki Focus Keyword SEO
+     */
+    public static function ajax_scan_missing_keywords() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        global $wpdb;
+
+        // 1. Scan Posts (Published) yang belum punya focus keyword
+        $posts_missing = [];
+        $posts = get_posts([
+            'post_type'      => 'post',
+            'post_status'    => 'publish',
+            'posts_per_page' => 200,
+            'fields'         => 'ids',
+        ]);
+
+        foreach ($posts as $p_id) {
+            $yoast_kw = get_post_meta($p_id, '_yoast_wpseo_focuskw', true);
+            $rm_kw    = get_post_meta($p_id, 'rank_math_focus_keyword', true);
+            if (empty(trim((string)$yoast_kw)) && empty(trim((string)$rm_kw))) {
+                $posts_missing[] = [
+                    'type'  => 'post',
+                    'id'    => $p_id,
+                    'title' => get_the_title($p_id),
+                ];
+            }
+        }
+
+        // 2. Scan Tags yang belum punya focus keyword
+        $tags_missing = [];
+        $tags = get_terms([
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+            'number'     => 200,
+        ]);
+
+        if (!empty($tags) && !is_wp_error($tags)) {
+            foreach ($tags as $t) {
+                $yoast_kw = get_term_meta($t->term_id, '_yoast_wpseo_focuskw', true);
+                $rm_kw    = get_term_meta($t->term_id, 'rank_math_focus_keyword', true);
+                if (empty(trim((string)$yoast_kw)) && empty(trim((string)$rm_kw))) {
+                    $tags_missing[] = [
+                        'type'  => 'tag',
+                        'id'    => $t->term_id,
+                        'title' => $t->name,
+                    ];
+                }
+            }
+        }
+
+        wp_send_json_success([
+            'posts_count' => count($posts_missing),
+            'tags_count'  => count($tags_missing),
+            'items'       => array_merge($posts_missing, $tags_missing),
+        ]);
+    }
+
+    /**
+     * AJAX: Perbaiki / Input target keyword ke item spesifik (post atau tag)
+     */
+    public static function ajax_fix_single_keyword() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        global $wpdb;
+        $type = sanitize_text_field(wp_unslash($_POST['item_type'] ?? 'post'));
+        $id   = absint($_POST['item_id'] ?? 0);
+
+        if ($id <= 0) {
+            wp_send_json_error('Invalid ID');
+        }
+
+        if ($type === 'tag') {
+            $term = get_term($id, 'post_tag');
+            if (!$term || is_wp_error($term)) {
+                wp_send_json_error('Tag not found');
+            }
+            $target_kw = $term->name;
+            update_term_meta($id, '_yoast_wpseo_focuskw', $target_kw);
+            update_term_meta($id, 'rank_math_focus_keyword', $target_kw);
+
+            wp_send_json_success([
+                'type'    => 'tag',
+                'id'      => $id,
+                'keyword' => $target_kw,
+                'message' => "Tag '{$term->name}' assigned focus keyword: '{$target_kw}'",
+            ]);
+        }
+
+        // Tipe Post
+        $post = get_post($id);
+        if (!$post) {
+            wp_send_json_error('Post not found');
+        }
+
+        $target_kw = '';
+
+        // 1. Cek dari tags post yang sudah ada
+        $tags = wp_get_post_tags($id);
+        if (!empty($tags) && !is_wp_error($tags)) {
+            $target_kw = $tags[0]->name;
+        }
+
+        // 2. Cek dari database relasi APCAI topics jika ada
+        if (empty($target_kw)) {
+            $t_meta = APCAI_DB::table_posts_meta();
+            $t_topics = APCAI_DB::table_topics();
+            $topic_row = $wpdb->get_row($wpdb->prepare(
+                "SELECT t.primary_keyword FROM {$t_topics} t INNER JOIN {$t_meta} m ON t.id = m.topic_id WHERE m.post_id = %d LIMIT 1",
+                $id
+            ));
+            if ($topic_row && !empty($topic_row->primary_keyword)) {
+                $target_kw = $topic_row->primary_keyword;
+            }
+        }
+
+        // 3. Fallback: Ekstrak kata kunci inti dari judul post
+        if (empty($target_kw)) {
+            $title = $post->post_title;
+            // Bersihkan stop words umum dan simbol
+            $clean_title = preg_replace('/[|\-–—:]+.*$/', '', $title); // hilangkan modifier brand di ujung
+            $target_kw = trim($clean_title);
+        }
+
+        if (empty($target_kw)) {
+            $target_kw = $post->post_title;
+        }
+
+        // Simpan ke meta Yoast SEO dan Rank Math
+        update_post_meta($id, '_yoast_wpseo_focuskw', $target_kw);
+        update_post_meta($id, 'rank_math_focus_keyword', $target_kw);
+
+        // Pastikan post memiliki tag Title-Cased jika belum ada
+        if (empty($tags) || is_wp_error($tags)) {
+            $formatted_tag = mb_convert_case($target_kw, MB_CASE_TITLE, 'UTF-8');
+            wp_set_post_tags($id, [$formatted_tag], true);
+        }
+
+        // Update post modified timestamp agar sitemap & perayap mendeteksi pembaruan
+        wp_update_post([
+            'ID' => $id,
+            'post_modified'     => current_time('mysql'),
+            'post_modified_gmt' => current_time('mysql', 1),
+        ]);
+
+        wp_send_json_success([
+            'type'    => 'post',
+            'id'      => $id,
+            'keyword' => $target_kw,
+            'message' => "Post '{$post->post_title}' assigned focus keyword: '{$target_kw}'",
+        ]);
     }
 
     // ----------------------------------------------------
