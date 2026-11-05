@@ -838,8 +838,9 @@ class APCAI_Admin {
         }
 
         global $wpdb;
-        $type = sanitize_text_field(wp_unslash($_POST['item_type'] ?? 'post'));
-        $id   = absint($_POST['item_id'] ?? 0);
+        $type      = sanitize_text_field(wp_unslash($_POST['item_type'] ?? 'post'));
+        $id        = absint($_POST['item_id'] ?? 0);
+        $date_mode = sanitize_text_field(wp_unslash($_POST['date_mode'] ?? 'smart_organic'));
 
         if ($id <= 0) {
             wp_send_json_error('Invalid ID');
@@ -920,12 +921,50 @@ class APCAI_Admin {
             wp_set_post_tags($id, [$formatted_tag], true);
         }
 
+        // Kalkulasi Tanggal Post Modified Organik Berdasarkan Pilihan User
+        $orig_time = strtotime($post->post_date);
+        $now_time  = current_time('timestamp');
+        $new_mod_time = $orig_time;
+
+        if ($date_mode === 'smart_organic') {
+            $age_seconds = $now_time - $orig_time;
+            if ($age_seconds <= 86400) {
+                // Artikel baru (terbit < 24 jam lalu): jeda alami 15-45 menit setelah post_date
+                $jitter = rand(15 * 60, 45 * 60);
+                $new_mod_time = min($now_time, $orig_time + $jitter);
+            } else {
+                // Artikel lama: jeda acak 2 jam s/d 12 jam setelah tanggal terbit aslinya
+                $jitter = rand(2 * 3600, 12 * 3600);
+                $new_mod_time = min($now_time, $orig_time + $jitter);
+            }
+        } elseif ($date_mode === 'gradual_recent') {
+            // Pembaruan bertahap acak dalam 1-3 hari terakhir
+            $days_back = rand(1, 3);
+            $hours_back = rand(1, 23);
+            $mins_back = rand(5, 55);
+            $candidate = $now_time - ($days_back * 86400) - ($hours_back * 3600) - ($mins_back * 60);
+            $new_mod_time = max($orig_time, $candidate);
+        } else {
+            // keep_original
+            $new_mod_time = $orig_time;
+        }
+
+        $formatted_mod = date_i18n('Y-m-d H:i:s', $new_mod_time);
+        $formatted_mod_gmt = gmdate('Y-m-d H:i:s', $new_mod_time);
+
+        // Update post modified secara aman langsung ke DB tanpa mengubah tanggal terbit asli
+        $wpdb->update($wpdb->posts, [
+            'post_modified'     => $formatted_mod,
+            'post_modified_gmt' => $formatted_mod_gmt,
+        ], ['ID' => $id]);
+        clean_post_cache($id);
+
         // Catat ke riwayat log aktivitas
         $t_logs = APCAI_DB::table_logs();
         $wpdb->insert($t_logs, [
             'action_type' => 'seo_backfill',
             'status'      => 'success',
-            'message'     => "Injeksi Frasa Kunci Yoast Post #{$id}: '{$post->post_title}' -> '{$target_kw}'",
+            'message'     => "Injeksi Frasa Kunci Yoast Post #{$id}: '{$post->post_title}' -> '{$target_kw}' (Modified: {$formatted_mod} [Mode: {$date_mode}])",
             'created_at'  => current_time('mysql'),
         ]);
 

@@ -1153,6 +1153,19 @@ Format Output WAJIB JSON murni:
             return new WP_Error('insert_failed', 'Gagal membuat post di WordPress.');
         }
 
+        // Terapkan Jeda Alami Acak 15-45 Menit untuk post_modified (Simulasi Organik Freshness)
+        $now_ts = current_time('timestamp');
+        $organic_jitter = rand(15 * 60, 45 * 60); // 15 hingga 45 menit
+        $organic_mod_ts = $now_ts + $organic_jitter;
+        $formatted_mod = date_i18n('Y-m-d H:i:s', $organic_mod_ts);
+        $formatted_mod_gmt = gmdate('Y-m-d H:i:s', $organic_mod_ts);
+
+        $wpdb->update($wpdb->posts, [
+            'post_modified'     => $formatted_mod,
+            'post_modified_gmt' => $formatted_mod_gmt,
+        ], ['ID' => $post_id]);
+        clean_post_cache($post_id);
+
         $word_count = str_word_count(strip_tags($html_content));
 
         // Format Tag / Keywords: Huruf Besar di Awal Kata (Title Case)

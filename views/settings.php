@@ -415,26 +415,70 @@
             </p>
 
             <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:16px;">
+                <div style="margin-bottom:14px;">
+                    <div style="font-weight:700;color:#0f172a;font-size:14px;display:flex;align-items:center;gap:6px;">
+                        🎯 <?php echo esc_html(APCAI_I18n::t('Pindai & Suntikkan Keyword Target Kosong', 'Scan & Auto-Fill Missing Focus Keyphrases')); ?>
+                    </div>
+                    <div style="font-size:12px;color:#64748b;margin-top:2px;">
+                        <?php echo esc_html(APCAI_I18n::t(
+                            'Mencocokkan keyword dari tag artikel, bank topik AI, atau mengekstrak entitas utama dari judul.',
+                            'Matches keywords from existing post tags, AI topic database, or extracts core entities from titles.'
+                        )); ?>
+                    </div>
+                </div>
+
+                <!-- 3 Opsi Strategi Tanggal (Timestamp Freshness Mode) -->
+                <div style="background:#ffffff;border:1px solid #cbd5e1;border-radius:6px;padding:14px 16px;margin-bottom:14px;">
+                    <label style="font-weight:600;font-size:13px;color:#1e293b;display:block;margin-bottom:8px;">
+                        📅 <?php echo esc_html(APCAI_I18n::t('Strategi Tanggal Pembaruan (Modified Date Strategy):', 'Modified Date SEO Strategy:')); ?>
+                    </label>
+                    <div style="display:grid;grid-template-columns: 1fr;gap:8px;">
+                        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#334155;cursor:pointer;">
+                            <input type="radio" name="backfill_date_mode" value="smart_organic" checked style="margin-top:2px;">
+                            <span>
+                                <strong><?php echo esc_html(APCAI_I18n::t('Smart Organic Freshness (Direkomendasikan Google)', 'Smart Organic Freshness (Google Recommended)')); ?></strong><br>
+                                <span style="font-size:11px;color:#64748b;">
+                                    <?php echo esc_html(APCAI_I18n::t(
+                                        'Artikel baru hari ini: jeda 15-45 menit setelah tanggal terbit. Artikel lama: jeda acak 2-12 jam setelah terbit asli (natural & anti-spam).',
+                                        'Fresh posts get 15-45m jitter after published date. Older posts get random 2-12h incremental lag (natural & anti-spam penalty).'
+                                    )); ?>
+                                </span>
+                            </span>
+                        </label>
+                        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#334155;cursor:pointer;">
+                            <input type="radio" name="backfill_date_mode" value="keep_original" style="margin-top:2px;">
+                            <span>
+                                <strong><?php echo esc_html(APCAI_I18n::t('Kunci Tanggal Asli (Strict Original)', 'Keep Strict Original Date')); ?></strong><br>
+                                <span style="font-size:11px;color:#64748b;">
+                                    <?php echo esc_html(APCAI_I18n::t(
+                                        'Menjaga tanggal post_modified persis sama dengan post_date asli tanpa merubah tanggal sama sekali.',
+                                        'Keeps modified date identical to original published date without any touch.'
+                                    )); ?>
+                                </span>
+                            </span>
+                        </label>
+                        <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#334155;cursor:pointer;">
+                            <input type="radio" name="backfill_date_mode" value="gradual_recent" style="margin-top:2px;">
+                            <span>
+                                <strong><?php echo esc_html(APCAI_I18n::t('Pembaruan Bertahap Terkini (Gradual Recent Updates)', 'Gradual Recent Updates')); ?></strong><br>
+                                <span style="font-size:11px;color:#64748b;">
+                                    <?php echo esc_html(APCAI_I18n::t(
+                                        'Menetapkan tanggal modified secara bertahap acak dalam 1-3 hari terakhir agar terdeteksi segar di mesin pencari.',
+                                        'Spreads modified timestamp randomly across last 1-3 days to signal fresh content updates.'
+                                    )); ?>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-                    <div>
-                        <div style="font-weight:700;color:#0f172a;font-size:14px;">
-                            🎯 <?php echo esc_html(APCAI_I18n::t('Pindai & Suntikkan Keyword Target Kosong', 'Scan & Auto-Fill Missing Focus Keyphrases')); ?>
-                        </div>
-                        <div style="font-size:12px;color:#64748b;margin-top:2px;">
-                            <?php echo esc_html(APCAI_I18n::t(
-                                'Mencocokkan keyword dari tag artikel, bank topik AI, atau mengekstrak entitas utama dari judul.',
-                                'Matches keywords from existing post tags, AI topic database, or extracts core entities from titles.'
-                            )); ?>
-                        </div>
-                    </div>
-                    <div style="display:flex;gap:10px;">
-                        <button type="button" id="btn-scan-missing-keywords" class="apcai-btn apcai-btn-secondary">
-                            🔍 <?php echo esc_html(APCAI_I18n::t('Pindai Konten Kosong', 'Scan Missing Content')); ?>
-                        </button>
-                        <button type="button" id="btn-start-fix-keywords" class="apcai-btn apcai-btn-primary" style="display:none;">
-                            ⚡ <?php echo esc_html(APCAI_I18n::t('Mulai Isi Semua Keyword', 'Start Auto-Fill & Update')); ?>
-                        </button>
-                    </div>
+                    <button type="button" id="btn-scan-missing-keywords" class="apcai-btn apcai-btn-secondary">
+                        🔍 <?php echo esc_html(APCAI_I18n::t('Pindai Konten Kosong', 'Scan Missing Content')); ?>
+                    </button>
+                    <button type="button" id="btn-start-fix-keywords" class="apcai-btn apcai-btn-primary" style="display:none;">
+                        ⚡ <?php echo esc_html(APCAI_I18n::t('Mulai Isi Semua Keyword', 'Start Auto-Fill & Update')); ?>
+                    </button>
                 </div>
 
                 <!-- Progress Bar & Status Log -->

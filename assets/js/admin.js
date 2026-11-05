@@ -697,6 +697,7 @@ jQuery(document).ready(function ($) {
         }
 
         const item = missingQueue.shift();
+        const dateMode = $('input[name="backfill_date_mode"]:checked').val() || 'smart_organic';
         const percent = Math.round((missingProcessed / missingTotal) * 100);
         $('#missing-kw-progress-bar').css('width', percent + '%');
         $('#missing-kw-percent-text').text(percent + '%');
@@ -711,7 +712,8 @@ jQuery(document).ready(function ($) {
                 action: 'apcai_fix_single_keyword',
                 nonce: nonce,
                 item_type: item.type,
-                item_id: item.id
+                item_id: item.id,
+                date_mode: dateMode
             },
             success: function (res) {
                 missingProcessed++;
