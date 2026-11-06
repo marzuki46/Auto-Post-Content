@@ -225,27 +225,98 @@ class APCAI_SEO_Helper {
     }
 
     /**
-     * Ekstrak Frasa Kunci Spesifik dari Judul Konten (2-5 kata bernilai SEO tinggi)
+     * Ekstrak Frasa Kunci Spesifik dari Judul Konten (Universal Multi-Niche: 2-4 Kata)
+     * Standar Yoast SEO & Rank Math: Focus Keyphrase idealnya 2-4 kata padat subjek.
      */
-    public static function extract_focus_keyword_from_title(string $title): string {
+    public static function extract_focus_keyword_from_title(string $title, string $lang = 'id'): string {
         $title = trim($title);
         if (empty($title)) {
             return '';
         }
 
-        // Potong delimiter judul umum: `:`, `|`, `-`, `–`, `—`
-        $clean = preg_replace('/[|\-–—:]+.*$/u', '', $title);
-        $clean = trim(preg_replace('/\s+/', ' ', $clean));
-
-        $words = array_values(array_filter(explode(' ', $clean)));
-        if (count($words) < 2) {
-            $clean_all = preg_replace('/[|\-–—:]+/u', ' ', $title);
-            $words = array_values(array_filter(explode(' ', trim(preg_replace('/\s+/', ' ', $clean_all)))));
+        // 1. Deteksi Pola Komparasi Lintas Niche (X vs Y)
+        // Bekerja universal di otomotif, tech, SaaS, gadget, gadget, tools, dll.
+        if (preg_match('/\b([A-Za-z0-9\s]{2,18})\s+(?:vs\.?|versus)\s+([A-Za-z0-9\s]{2,18})\b/ui', $title, $vs_match)) {
+            $ent_a = trim(preg_replace('/^(?:komparasi|perbandingan|review|memilih|pilih|antara|battle|pilih mana)\s+/ui', '', trim($vs_match[1])));
+            $ent_b = trim(preg_replace('/\s+(?:terbaru|terlengkap|mana|yang|paling|bagus|unggul|murah).*$/ui', '', trim($vs_match[2])));
+            
+            $vs_phrase = trim("{$ent_a} vs {$ent_b}");
+            $vs_words = array_values(array_filter(explode(' ', $vs_phrase)));
+            if (count($vs_words) >= 3 && count($vs_words) <= 5) {
+                return $vs_phrase;
+            }
         }
 
-        // Ambil 2-5 kata utama yang mewakili subjek spesifik
-        if (count($words) > 5) {
-            $words = array_slice($words, 0, 5);
+        // 2. Pemisahan Delimiter Judul (: | - – — ? !)
+        // Sisi kiri tanda baca umumnya merupakan Subjek / Topik Inti
+        $parts = preg_split('/[:|\-–—?!]+/u', $title);
+        $candidate = !empty($parts[0]) ? trim($parts[0]) : $title;
+
+        // Jika sisi kiri terlalu pendek (< 2 kata), coba gunakan sisi kanan
+        $cand_words = array_values(array_filter(explode(' ', $candidate)));
+        if (count($cand_words) < 2 && !empty($parts[1])) {
+            $candidate = trim($parts[1]);
+        }
+
+        // 3. Bersihkan Listicle & Filler Awal Lintas Niche
+        $leading_noise = [
+            '/^\d+\s*[\.\+\-]?\s*/u', // Angka listicle di awal (10, 7, 5, dll)
+            '/^(?:inilah|simak|daftar|kumpulan|rekomendasi|rahasia|mengenal|ulasan lengkap|panduan lengkap|panduan praktis|bocoran|fakta unik|fakta|alasan|top \d+|best)\s+/ui',
+            '/^(?:top \d+|the best|\d+ best|\d+ top|\d+ ways to|\d+ tips for|guide to)\s+/ui',
+        ];
+        foreach ($leading_noise as $pattern) {
+            $candidate = preg_replace($pattern, '', $candidate);
+        }
+        $candidate = trim($candidate);
+
+        // 4. Bersihkan Modifier & Clickbait Akhir Lintas Niche
+        $trailing_noise = [
+            '/\s+(?:terbaru|terlengkap|terbaik|terpopuler|favorit|populer|murah|paling dicari|viral|kekinian)\s*$/ui',
+            '/\s+(?:yang wajib dicoba|yang wajib diketahui|yang wajib dikunjungi|yang harus anda tahu|yang perlu anda tahu|yang perlu dipahami)\s*$/ui',
+            '/\s+(?:untuk pemula|untuk bisnis|untuk sehari-hari|untuk anak|untuk kesehatan|untuk hidup sehat|untuk investasi)\s*$/ui',
+            '/\s+(?:di era digital|di era modern|di tahun \d{4}|tahun \d{4}|masa kini|jaman now)\s*$/ui',
+            '/\s+(?:agar awet|agar mesin awet|agar tetap prima|agar tahan lama|agar sukses|secara alami|dengan mudah|dengan cepat)\s*$/ui',
+            '/\s+(?:mana yang cocok|mana yang lebih bagus|mana yang terbaik|pilih mana)\s*$/ui',
+            '/\s+(?:for beginners|in \d{4}|step by step|made easy|explained|full guide|you should know)\s*$/ui',
+        ];
+        foreach ($trailing_noise as $pattern) {
+            $candidate = preg_replace($pattern, '', $candidate);
+        }
+        $candidate = trim(preg_replace('/\s+/', ' ', $candidate));
+
+        // 5. Batasi Ketat 2 sampai 4 Kata (Yoast / Rank Math Focus Keyphrase Rules)
+        $words = array_values(array_filter(explode(' ', $candidate)));
+
+        if (count($words) > 4) {
+            $stop_words = [
+                'di', 'ke', 'dari', 'pada', 'untuk', 'yang', 'dan', 'atau', 'ini', 'itu', 
+                'dengan', 'secara', 'bisa', 'dapat', 'oleh', 'bagi', 'saat', 'dalam',
+                'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'and', 'or', 'the', 'a', 'an'
+            ];
+            
+            $filtered = [];
+            foreach ($words as $idx => $w) {
+                $lw = strtolower($w);
+                if ($idx > 0 && in_array($lw, $stop_words, true) && (count($words) - count($filtered)) > 4) {
+                    continue;
+                }
+                $filtered[] = $w;
+                if (count($filtered) === 4) {
+                    break;
+                }
+            }
+            $words = $filtered;
+        }
+
+        // Fallback jika terlalu sedikit kata (< 2 kata)
+        if (count($words) < 2) {
+            $raw_words = array_values(array_filter(explode(' ', preg_replace('/[^\p{L}\p{N}\s]/u', '', $title))));
+            $words = array_slice($raw_words, 0, 3);
+        }
+
+        // Batas absolut akhir: 2 - 4 kata
+        if (count($words) > 4) {
+            $words = array_slice($words, 0, 4);
         }
 
         return trim(implode(' ', $words));
