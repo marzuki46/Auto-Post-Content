@@ -851,6 +851,8 @@ class APCAI_Admin {
                 wp_send_json_error('Tag not found');
             }
             $target_kw = $term->name;
+            $t_lang = get_term_meta($id, '_apcai_tag_lang', true) ?: 'id';
+            $target_kw = APCAI_SEO_Helper::resolve_cannibalization($target_kw, 'tag', $id, $t_lang);
             APCAI_SEO_Helper::set_term_focus_keyword($id, $target_kw, 'post_tag');
 
             $tag_url = get_term_link($term);
@@ -913,6 +915,10 @@ class APCAI_Admin {
         if (empty($target_kw)) {
             $target_kw = $post->post_title;
         }
+
+        // Algoritma Anti-Kanibalisasi: Cegah kata kunci post bertabrakan dengan tag
+        $post_lang = get_post_meta($id, '_apcai_language', true) ?: 'id';
+        $target_kw = APCAI_SEO_Helper::resolve_cannibalization($target_kw, 'post', $id, $post_lang, $post->post_title);
 
         // Simpan ke meta Yoast SEO dan Rank Math via Helper Universal
         APCAI_SEO_Helper::set_post_focus_keyword($id, $target_kw);

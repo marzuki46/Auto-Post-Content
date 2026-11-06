@@ -1254,7 +1254,9 @@ Format Output WAJIB JSON murni:
             $focus_kw = trim($clean_t);
         }
         if (!empty($focus_kw)) {
-            APCAI_SEO_Helper::set_post_focus_keyword($post_id, $focus_kw);
+            // Algoritma Anti-Kanibalisasi: Bedakan keyword artikel dari keyword tag
+            $resolved_kw = APCAI_SEO_Helper::resolve_cannibalization($focus_kw, 'post', $post_id, $language, $title);
+            APCAI_SEO_Helper::set_post_focus_keyword($post_id, $resolved_kw);
         }
 
         if (!empty($formatted_keywords)) {

@@ -436,8 +436,9 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
             update_term_meta($tag_id, '_apcai_tag_length', $length);
             update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
 
-            // Auto input frasa kunci utama Yoast & Rank Math
-            APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $tag_name, 'post_tag');
+            // Auto input frasa kunci utama Yoast & Rank Math dengan resolusi anti-kanibalisasi
+            $safe_tag_kw = APCAI_SEO_Helper::resolve_cannibalization($tag_name, 'tag', $tag_id, $lang);
+            APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $safe_tag_kw, 'post_tag');
         }
 
         wp_send_json_success([
@@ -502,8 +503,9 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($tag_id, '_apcai_tag_length', $length);
         update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
 
-        // Auto input ke frasa kunci Yoast SEO & Rank Math
-        APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $tag_name, 'post_tag');
+        // Auto input ke frasa kunci Yoast SEO & Rank Math dengan resolusi anti-kanibalisasi
+        $safe_tag_kw = APCAI_SEO_Helper::resolve_cannibalization($tag_name, 'tag', $tag_id, $lang);
+        APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $safe_tag_kw, 'post_tag');
 
         // Catat ke Log dengan Link URL yang bisa diklik
         global $wpdb;
@@ -583,7 +585,8 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
 
         $term = get_term($tag_id, 'post_tag');
         if ($term && !is_wp_error($term)) {
-            APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $term->name, 'post_tag');
+            $safe_tag_kw = APCAI_SEO_Helper::resolve_cannibalization($term->name, 'tag', $tag_id, $lang);
+            APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $safe_tag_kw, 'post_tag');
         }
 
         wp_send_json_success('Konten tag berhasil diperbarui.');
@@ -631,8 +634,9 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($target['id'], '_apcai_tag_length', $length);
         update_term_meta($target['id'], '_apcai_tag_funnel', $funnel);
 
-        // Auto input ke frasa kunci Yoast SEO & Rank Math
-        APCAI_SEO_Helper::set_term_focus_keyword($target['id'], $target['name'], 'post_tag');
+        // Auto input ke frasa kunci Yoast SEO & Rank Math dengan resolusi anti-kanibalisasi
+        $safe_target_kw = APCAI_SEO_Helper::resolve_cannibalization($target['name'], 'tag', $target['id'], $lang);
+        APCAI_SEO_Helper::set_term_focus_keyword($target['id'], $safe_target_kw, 'post_tag');
 
         // Update kuota tracker hari ini
         $tracker['count']++;
