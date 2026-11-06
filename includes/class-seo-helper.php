@@ -45,9 +45,18 @@ class APCAI_SEO_Helper {
             }
         }
 
-        // 4. Trigger Yoast Saved Post Action
+        // 4. Trigger Yoast Saved Post Action & Native Post Save Hooks (Simulate Open & Save Post)
         if (has_action('wpseo_saved_postdata')) {
             do_action('wpseo_saved_postdata', $post_id);
+        }
+
+        // 5. Trigger Native WordPress Post Update & Indexer Hooks (Re-index tanpa ubah revisi)
+        $post = get_post($post_id);
+        if ($post) {
+            do_action('save_post', $post_id, $post, true);
+            do_action('edit_post', $post_id, $post);
+            do_action('post_updated', $post_id, $post, $post);
+            clean_post_cache($post_id);
         }
 
         return true;
@@ -100,6 +109,10 @@ class APCAI_SEO_Helper {
                 ], ['id' => $row_id]);
             }
         }
+
+        // 5. Trigger Native Term Save / Edit Hooks (Simulate Open & Save Term)
+        do_action('edited_term', $term_id, 0, $taxonomy);
+        clean_term_cache($term_id, $taxonomy);
 
         return true;
     }
