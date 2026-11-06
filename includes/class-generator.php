@@ -1283,11 +1283,8 @@ Format Output WAJIB JSON murni:
         }
 
         if (!empty($focus_kw)) {
-            // Algoritma Anti-Kanibalisasi: Bedakan keyword artikel dari keyword tag dan sesama post
-            $resolved_kw = APCAI_SEO_Helper::resolve_cannibalization($focus_kw, 'post', $post_id, $language, $title);
-            
             // Alur Revisi Editorial Alami: Edit & save setelah terbit (+15 s/d 45 menit)
-            APCAI_SEO_Helper::apply_natural_editorial_revision($post_id, $resolved_kw, 15, 45);
+            APCAI_SEO_Helper::apply_natural_editorial_revision($post_id, $focus_kw, 15, 45);
         }
 
         // Filter Tag: Wajib Broad (1-3 kata) & Cek Tidak Boleh Kembar dengan Keyword Post (Anti-Kanibalisasi)

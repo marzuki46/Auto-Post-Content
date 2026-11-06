@@ -531,56 +531,9 @@
             </div>
         </div>
 
-        <!-- 8. Detektor Duplikasi & Kanibalisasi Keyword (Post vs Page vs Tag) -->
+        <!-- 8. Status Pembaruan Sistem (Cloud OTA Status) -->
         <div class="apcai-card">
-            <h2><?php echo esc_html(APCAI_I18n::t('8. Detektor Duplikasi & Kanibalisasi Keyword (Post / Page / Tag)', '8. Duplicate & Cannibalization Keyword Detector')); ?></h2>
-            <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:14px;">
-                <?php echo esc_html(APCAI_I18n::t(
-                    'Pindai seluruh kata kunci utama (Yoast / Rank Math) di postingan, halaman, dan tag. Temukan konflik kanibalisasi agar website tidak bersaing dengan dirinya sendiri di Google.',
-                    'Scan all primary focus keyphrases across posts, pages, and tags to detect internal SEO cannibalization conflicts.'
-                )); ?>
-            </p>
-
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:16px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                    <div>
-                        <strong style="color:#0f172a;font-size:14px;">🔍 <?php echo esc_html(APCAI_I18n::t('Audit Kanibalisasi Semantik', 'Semantic Cannibalization Audit')); ?></strong>
-                        <div style="font-size:12px;color:#64748b;margin-top:2px;">Mendeteksi kesamaan token Jaccard &gt;= 70% dan exact match antar jenis konten.</div>
-                    </div>
-                    <button type="button" id="btn-scan-duplicate-keywords" class="apcai-btn apcai-btn-primary" style="padding:8px 18px;font-size:13px;">
-                        ⚡ <?php echo esc_html(APCAI_I18n::t('Pindai Konflik Duplikasi', 'Scan Keyword Conflicts')); ?>
-                    </button>
-                </div>
-
-                <div id="duplicate-kw-results" style="display:none;margin-top:16px;">
-                    <div id="duplicate-kw-summary" style="padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px;"></div>
-                    <div id="duplicate-kw-actions" style="display:none;margin-bottom:12px;">
-                        <button type="button" id="btn-resolve-all-conflicts" class="apcai-btn apcai-btn-primary" style="padding:7px 16px;font-size:12px;">
-                            ⚡ <?php echo esc_html(APCAI_I18n::t('Diferensiasi Otomatis Semua Konflik (Berdasarkan Judul)', 'Auto-Resolve All Conflicts (Based on Titles)')); ?>
-                        </button>
-                        <span id="resolve-all-status" style="font-size:12px;color:#64748b;margin-left:10px;"></span>
-                    </div>
-                    <div id="duplicate-kw-table-wrapper" style="max-height:360px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;background:#fff;">
-                        <table class="apcai-table" style="width:100%;margin:0;">
-                            <thead>
-                                <tr style="background:#f1f5f9;text-align:left;font-size:12px;">
-                                    <th style="padding:8px 12px;">Kemiripan</th>
-                                    <th style="padding:8px 12px;">Konten A (Tipe / Judul)</th>
-                                    <th style="padding:8px 12px;">Konten B (Tipe / Judul)</th>
-                                    <th style="padding:8px 12px;">Frasa Kunci Bentrok</th>
-                                    <th style="padding:8px 12px;text-align:right;">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="duplicate-kw-table-body" style="font-size:12px;"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 9. Status Pembaruan Sistem (Cloud OTA Status) -->
-        <div class="apcai-card">
-            <h2><?php echo esc_html(APCAI_I18n::t('9. Status Sistem & Pembaruan Cloud Otomatis', '9. System Status & Pro Cloud Updates')); ?></h2>
+            <h2><?php echo esc_html(APCAI_I18n::t('8. Status Sistem & Pembaruan Cloud Otomatis', '8. System Status & Pro Cloud Updates')); ?></h2>
             <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
                 <?php echo esc_html(APCAI_I18n::t(
                     'Sistem terhubung langsung ke cloud release channel resmi. Peningkatan model AI, algoritma indexing, dan patch keamanan diterapkan otomatis.',

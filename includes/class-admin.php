@@ -34,10 +34,6 @@ class APCAI_Admin {
         // Backfill Missing SEO Focus Keywords (Posts & Tags)
         add_action('wp_ajax_apcai_scan_missing_keywords', [__CLASS__, 'ajax_scan_missing_keywords']);
         add_action('wp_ajax_apcai_fix_single_keyword', [__CLASS__, 'ajax_fix_single_keyword']);
-
-        // Detect Duplicate & Cannibalized Keywords Tool AJAX
-        add_action('wp_ajax_apcai_scan_duplicate_keywords', [__CLASS__, 'ajax_scan_duplicate_keywords']);
-        add_action('wp_ajax_apcai_auto_resolve_keyword_conflict', [__CLASS__, 'ajax_auto_resolve_keyword_conflict']);
         add_action('wp_ajax_apcai_fix_duplicate_topic_keywords', [__CLASS__, 'ajax_fix_duplicate_topic_keywords']);
 
         // Clear Activity Logs AJAX
@@ -895,23 +891,6 @@ class APCAI_Admin {
     }
 
     /**
-     * AJAX: Pindai duplikasi / kanibalisasi keyword antar Post, Page, dan Tag
-     */
-    public static function ajax_scan_duplicate_keywords() {
-        check_ajax_referer('apcai_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Unauthorized');
-        }
-
-        if (class_exists('APCAI_SEO_Helper')) {
-            $report = APCAI_SEO_Helper::audit_duplicate_keywords();
-            wp_send_json_success($report);
-        } else {
-            wp_send_json_error('APCAI_SEO_Helper class not found.');
-        }
-    }
-
-    /**
      * AJAX: Perbaiki / Input target keyword ke item spesifik (post atau tag)
      */
     public static function ajax_fix_single_keyword() {
@@ -935,8 +914,6 @@ class APCAI_Admin {
                 wp_send_json_error('Tag not found');
             }
             $target_kw = $term->name;
-            $t_lang = get_term_meta($id, '_apcai_tag_lang', true) ?: 'id';
-            $target_kw = APCAI_SEO_Helper::resolve_cannibalization($target_kw, 'tag', $id, $t_lang);
             APCAI_SEO_Helper::set_term_focus_keyword($id, $target_kw, 'post_tag');
 
             $tag_url = get_term_link($term);
@@ -996,10 +973,6 @@ class APCAI_Admin {
         if (empty($target_kw)) {
             $target_kw = $post->post_title;
         }
-
-        // Algoritma Anti-Kanibalisasi: Cegah kata kunci post bertabrakan dengan tag dan sesama post
-        $post_lang = get_post_meta($id, '_apcai_language', true) ?: 'id';
-        $target_kw = APCAI_SEO_Helper::resolve_cannibalization($target_kw, 'post', $id, $post_lang, $post->post_title);
 
         // Simpan ke meta Yoast SEO dan Rank Math via Helper Universal
         APCAI_SEO_Helper::set_post_focus_keyword($id, $target_kw);
@@ -1079,53 +1052,6 @@ class APCAI_Admin {
             'keyword' => $target_kw,
             'message' => "Post '{$post->post_title}' assigned focus keyword: '{$target_kw}'",
         ]);
-    }
-
-    /**
-     * AJAX: Selesaikan otomatis konflik keyword secara spesifik & individual
-     */
-    public static function ajax_auto_resolve_keyword_conflict() {
-        check_ajax_referer('apcai_admin_nonce', 'nonce');
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error('Unauthorized');
-        }
-
-        $id = absint($_POST['id'] ?? 0);
-        $type = sanitize_key($_POST['type'] ?? 'post');
-        if ($id <= 0) {
-            wp_send_json_error('Invalid ID');
-        }
-
-        if ($type === 'tag') {
-            $term = get_term($id, 'post_tag');
-            if (!$term || is_wp_error($term)) {
-                wp_send_json_error('Tag not found');
-            }
-            $new_kw = APCAI_SEO_Helper::resolve_cannibalization($term->name, 'tag', $id, 'id');
-            APCAI_SEO_Helper::set_term_focus_keyword($id, 'post_tag', $new_kw);
-            wp_send_json_success([
-                'id'       => $id,
-                'type'     => 'tag',
-                'keyword'  => $new_kw,
-                'message'  => "Tag keyword updated to: {$new_kw}",
-            ]);
-        } else {
-            $post = get_post($id);
-            if (!$post) {
-                wp_send_json_error('Post not found');
-            }
-            $post_lang = get_post_meta($id, '_apcai_language', true) ?: 'id';
-            $extracted_kw = APCAI_SEO_Helper::extract_focus_keyword_from_title($post->post_title);
-            $new_kw = APCAI_SEO_Helper::resolve_cannibalization($extracted_kw, 'post', $id, $post_lang, $post->post_title);
-            APCAI_SEO_Helper::set_post_focus_keyword($id, $new_kw);
-
-            wp_send_json_success([
-                'id'       => $id,
-                'type'     => 'post',
-                'keyword'  => $new_kw,
-                'message'  => "Post keyword updated to: {$new_kw}",
-            ]);
-        }
     }
 
     // ----------------------------------------------------
