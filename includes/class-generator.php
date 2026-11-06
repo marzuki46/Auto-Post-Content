@@ -119,12 +119,16 @@ Prioritaskan merancang ide topik artikel yang mengangkat data update, promo, ata
 Artikel yang sudah ada di kategori ini (JANGAN ulangi):
 {$existing_text}
 
-ATURAN FORMAT JUDUL & KEYWORD:
-1. BATAS PANJANG: Wajib 45 - 65 karakter (maksimal 70 karakter).
-2. Dilarang kata-kata klise AI ('Menyelami', 'Mengupas Tuntas', 'Rombak UI', 'Mesin Konversi', titik dua panjang).
-3. ATURAN KATA 'CARA' (KHUSUS BAHASA INDONESIA): Dilarang menggunakan kata 'Panduan' (seperti 'Panduan Lengkap', 'Panduan Memulai', 'Panduan Praktis'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...', 'Cara Memilih...').
-4. ATURAN KETAT PRIMARY KEYWORD: Primary keyword WAJIB 100% SPESIFIK dan unik mengikuti subjek/tipe produk tiap baris judul (misal: 'Honda ADV 160 vs PCX 160', 'Honda BeAT Terbaru', 'Merawat Motor Honda'). DILARANG KERAS menggunakan nama brand umum/dealer (seperti 'dealer motor honda solo' atau nama perusahaan) sebagai primary_keyword! Setiap baris topik WAJIB memiliki primary_keyword yang BERBEDA satu sama lain!
-5. Tentukan nilai 'funnel_stage' secara presisi: 'tofu', 'mofu', atau 'bofu'.
+ALUR RISET KEYWORD & JUDUL (KEYWORD-FIRST):
+1. TENTUKAN 'primary_keyword' TERLEBIH DAHULU:
+   - Riset frasa kunci pencarian utama (2 - 4 kata) bernilai SEO tinggi yang memiliki volume pencarian riil.
+   - Sesuai niche kategori '{$cat_name}' (contoh Otomotif: 'Honda ADV 160', SaaS: 'Page Builder WordPress', Kuliner: 'Resep Daging Sapi', Travel: 'Tempat Wisata Bandung', Finance: 'Investasi Reksa Dana').
+   - DILARANG KERAS menggunakan nama brand umum/dealer sebagai primary_keyword. Setiap baris ide WAJIB memiliki primary_keyword yang BERBEDA satu sama lain.
+2. BUATKAN 'title' (45 - 65 karakter) YANG MEMUAT 'primary_keyword':
+   - Posisi keyword TIDAK HARUS di awal judul; posisikan secara luwes dan alami (bisa di awal, di tengah, atau di akhir judul).
+   - Dilarang kata-kata klise AI ('Menyelami', 'Mengupas Tuntas', 'Rombak UI', 'Mesin Konversi', titik dua panjang).
+   - Khusus Bahasa Indonesia: Dilarang menggunakan kata 'Panduan', gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Memilih...').
+3. Tentukan 'funnel_stage' secara presisi: 'tofu', 'mofu', atau 'bofu'.
 
 Balas HANYA dengan JSON array valid tanpa teks pengantar:
 [{\"title\": \"string\", \"primary_keyword\": \"string\", \"intent\": \"string\", \"funnel_stage\": \"tofu|mofu|bofu\", \"angle\": \"string\"}]";
@@ -1255,16 +1259,17 @@ Format Output WAJIB JSON murni:
 
         // Auto Input Frasa Kunci Utama (Focus Keyphrase) Yoast SEO & Rank Math
         $focus_kw = '';
-        if (!empty($data['focus_keyword'])) {
-            $focus_kw = sanitize_text_field($data['focus_keyword']);
-        } elseif (!empty($formatted_keywords[0])) {
-            $focus_kw = $formatted_keywords[0];
-        } elseif ($topic_id > 0) {
+        if ($topic_id > 0) {
             $t_topics = APCAI_DB::table_topics();
             $topic_row = $wpdb->get_row($wpdb->prepare("SELECT primary_keyword FROM {$t_topics} WHERE id = %d", $topic_id));
             if ($topic_row && !empty($topic_row->primary_keyword)) {
-                $focus_kw = $topic_row->primary_keyword;
+                $focus_kw = trim($topic_row->primary_keyword);
             }
+        }
+        if (empty($focus_kw) && !empty($data['focus_keyword'])) {
+            $focus_kw = sanitize_text_field($data['focus_keyword']);
+        } elseif (empty($focus_kw) && !empty($formatted_keywords[0])) {
+            $focus_kw = $formatted_keywords[0];
         }
 
         // Proteksi jika keyword terdeteksi broad brand name
@@ -1276,14 +1281,37 @@ Format Output WAJIB JSON murni:
         if (empty($focus_kw) && !empty($title)) {
             $focus_kw = APCAI_SEO_Helper::extract_focus_keyword_from_title($title);
         }
+
         if (!empty($focus_kw)) {
             // Algoritma Anti-Kanibalisasi: Bedakan keyword artikel dari keyword tag dan sesama post
             $resolved_kw = APCAI_SEO_Helper::resolve_cannibalization($focus_kw, 'post', $post_id, $language, $title);
-            APCAI_SEO_Helper::set_post_focus_keyword($post_id, $resolved_kw);
+            
+            // Alur Revisi Editorial Alami: Edit & save setelah terbit (+15 s/d 45 menit)
+            APCAI_SEO_Helper::apply_natural_editorial_revision($post_id, $resolved_kw, 15, 45);
         }
 
+        // Filter Tag: Wajib Broad (1-3 kata) & Cek Tidak Boleh Kembar dengan Keyword Post (Anti-Kanibalisasi)
         if (!empty($formatted_keywords)) {
-            wp_set_post_tags($post_id, $formatted_keywords, true);
+            $safe_broad_tags = [];
+            foreach ($formatted_keywords as $t_candidate) {
+                $t_clean = trim($t_candidate);
+                if (empty($t_clean)) continue;
+
+                // Batasi tag agar tetap broad (1-3 kata)
+                $w_parts = array_values(array_filter(explode(' ', $t_clean)));
+                if (count($w_parts) > 3) {
+                    $t_clean = implode(' ', array_slice($w_parts, 0, 3));
+                }
+
+                // Cek kemiripan dengan keyword post: jika mirip >= 70%, skip agar tidak bentrok
+                if (!empty($focus_kw) && APCAI_SEO_Helper::calculate_keyword_similarity($t_clean, $focus_kw) >= 0.70) {
+                    continue;
+                }
+                $safe_broad_tags[] = $t_clean;
+            }
+            if (!empty($safe_broad_tags)) {
+                wp_set_post_tags($post_id, array_unique($safe_broad_tags), true);
+            }
         }
 
         // Auto Download / Set Featured Image (WebP Compressed & Anti-Empty-Image Multi-Tier)

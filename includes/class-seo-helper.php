@@ -323,6 +323,42 @@ class APCAI_SEO_Helper {
     }
 
     /**
+     * Terapkan Alur Revisi Editorial Alami (15 - 45 Menit Setelah Terbit)
+     * Menginjeksi focus keyword, memperbarui post_modified secara natural,
+     * dan men-trigger native WordPress save hooks agar Yoast & Rank Math mendeteksi revisi.
+     */
+    public static function apply_natural_editorial_revision(int $post_id, string $focus_kw, int $jitter_min = 15, int $jitter_max = 45): void {
+        $post = get_post($post_id);
+        if (!$post) return;
+
+        // 1. Injeksi target keyword ke Yoast & Rank Math
+        self::set_post_focus_keyword($post_id, $focus_kw);
+
+        // 2. Hitung timestamp revisi alami: 15 sampai 45 menit setelah tanggal terbit
+        $orig_time = strtotime($post->post_date);
+        $jitter_sec = rand($jitter_min * 60, $jitter_max * 60);
+        $mod_timestamp = $orig_time + $jitter_sec;
+
+        $mod_date     = date('Y-m-d H:i:s', $mod_timestamp);
+        $mod_date_gmt = gmdate('Y-m-d H:i:s', $mod_timestamp);
+
+        global $wpdb;
+        $wpdb->update($wpdb->posts, [
+            'post_modified'     => $mod_date,
+            'post_modified_gmt' => $mod_date_gmt,
+        ], ['ID' => $post_id]);
+
+        clean_post_cache($post_id);
+        update_post_meta($post_id, '_apcai_editorial_revised', 1);
+        update_post_meta($post_id, '_apcai_editorial_revision_time', $mod_date);
+
+        // 3. Trigger hooks resmi WordPress agar indexables langsung tersinkronkan
+        do_action('save_post', $post_id, get_post($post_id), true);
+        do_action('edit_post', $post_id, get_post($post_id));
+        do_action('post_updated', $post_id, get_post($post_id), $post);
+    }
+
+    /**
      * Resolusi Anti-Kanibalisasi Post vs Tag Keyword:
      * - Tag = Broad / Topic Hub / MOFU Curated ("Kumpulan Solusi", "Direktori", "Hub")
      * - Post = Specific Long-Tail / Intent-Driven ("Cara Memilih...", "Tips...", "Langkah...")
