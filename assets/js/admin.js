@@ -308,10 +308,12 @@ jQuery(document).ready(function ($) {
         $('#studio-loading').show();
         $('#studio-results-area').hide();
 
+        const primaryLang = $('#studio-primary-lang').val() || 'id';
         const payload = {
             action: 'apcai_generate_now',
             nonce: nonce,
             topic: topic,
+            primary_lang: primaryLang,
             category_id: $('#studio-category').val(),
             funnel_stage: $('#studio-funnel').val(),
             keyword_prompt: $('#studio-kw-prompt').val(),
@@ -329,11 +331,23 @@ jQuery(document).ready(function ($) {
 
             if (res.success && res.data.result) {
                 generatedIdData = res.data.result;
-                generatedEnData = null;
-                generatedMsData = null;
-                $('.apcai-tab[data-lang="en"], .apcai-tab[data-lang="ms"]').hide();
-                $('.apcai-tab[data-lang="id"]').addClass('active');
-                renderStudioView('id');
+                generatedEnData = (primaryLang === 'en') ? res.data.result : null;
+                generatedMsData = (primaryLang === 'ms') ? res.data.result : null;
+
+                $('.apcai-tab').removeClass('active');
+                if (primaryLang === 'en') {
+                    $('.apcai-tab[data-lang="id"], .apcai-tab[data-lang="ms"]').hide();
+                    $('.apcai-tab[data-lang="en"]').show().addClass('active');
+                    renderStudioView('en');
+                } else if (primaryLang === 'ms') {
+                    $('.apcai-tab[data-lang="id"], .apcai-tab[data-lang="en"]').hide();
+                    $('.apcai-tab[data-lang="ms"]').show().addClass('active');
+                    renderStudioView('ms');
+                } else {
+                    $('.apcai-tab[data-lang="en"], .apcai-tab[data-lang="ms"]').hide();
+                    $('.apcai-tab[data-lang="id"]').show().addClass('active');
+                    renderStudioView('id');
+                }
                 $('#studio-results-area').fadeIn();
                 showNotice('Artikel berhasil dikembangkan dari outline dengan tautan silo!', 'success');
             } else {

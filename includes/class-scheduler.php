@@ -3,14 +3,16 @@ defined('ABSPATH') || exit;
 
 class APCAI_Scheduler {
 
-    const CRON_HOOK_DAILY   = 'apcai_cron_daily_planner';
-    const CRON_HOOK_EXECUTE = 'apcai_cron_post_executor';
+    const CRON_HOOK_DAILY       = 'apcai_cron_daily_planner';
+    const CRON_HOOK_EXECUTE     = 'apcai_cron_post_executor';
+    const CRON_HOOK_TAG_EXECUTE = 'apcai_cron_tag_executor';
 
     public static function init() {
         add_filter('cron_schedules', [__CLASS__, 'add_cron_intervals']);
 
         add_action(self::CRON_HOOK_DAILY, [__CLASS__, 'run_daily_planner']);
         add_action(self::CRON_HOOK_EXECUTE, [__CLASS__, 'run_scheduled_posting']);
+        add_action(self::CRON_HOOK_TAG_EXECUTE, ['APCAI_Tag_Manager', 'run_scheduled_tag_posting']);
 
         // Pastikan daily planner cron terdaftar
         if (!wp_next_scheduled(self::CRON_HOOK_DAILY)) {
@@ -25,6 +27,11 @@ class APCAI_Scheduler {
                 wp_schedule_event(time() + 60, 'apcai_ten_minutes', self::CRON_HOOK_EXECUTE);
             }
         }
+
+        // Pastikan dedicated tag executor cron aktif jika tag schedule diaktifkan
+        if (!empty($settings['tag_schedule_enabled']) && class_exists('APCAI_Tag_Manager')) {
+            APCAI_Tag_Manager::sync_tag_schedule();
+        }
     }
 
     public static function add_cron_intervals($schedules) {
@@ -38,6 +45,7 @@ class APCAI_Scheduler {
     public static function deactivate() {
         wp_clear_scheduled_hook(self::CRON_HOOK_DAILY);
         wp_clear_scheduled_hook(self::CRON_HOOK_EXECUTE);
+        wp_clear_scheduled_hook(self::CRON_HOOK_TAG_EXECUTE);
     }
 
     public static function sync_schedule() {
@@ -254,7 +262,9 @@ class APCAI_Scheduler {
         $funnel_stage = $topic->funnel_stage ?: 'tofu';
 
         // 3. Generate Primary Content (Silo + Landing Page Link Otomatis)
-        $primary_res = APCAI_Generator::generate_primary_content($topic->title, $cat_id, $funnel_stage);
+        $primary_res = APCAI_Generator::generate_primary_content($topic->title, $cat_id, $funnel_stage, [
+            'primary_lang' => $default_lang,
+        ]);
 
         if (is_wp_error($primary_res)) {
             // Kembalikan status topik ke idea agar tidak hangus
@@ -350,9 +360,13 @@ class APCAI_Scheduler {
             'created_at'  => current_time('mysql'),
         ]);
 
-        // Auto-Generate Tag Copywriting (Background Cron Step) jika diaktifkan
+        // Auto-Generate Tag Copywriting HANYA jika mode eksekusi adalah 'with_post'
+        // Jika mode eksekusi 'hourly_jitter', scheduler tag berjalan mandiri via CRON_HOOK_TAG_EXECUTE
         if (class_exists('APCAI_Tag_Manager')) {
-            APCAI_Tag_Manager::cron_step_tag_generator();
+            $tag_mode = $settings['tag_schedule_execution_mode'] ?? 'with_post';
+            if ($tag_mode === 'with_post') {
+                APCAI_Tag_Manager::cron_step_tag_generator();
+            }
         }
     }
 }

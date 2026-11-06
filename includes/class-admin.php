@@ -478,6 +478,7 @@ class APCAI_Admin {
         }
 
         $opts = [
+            'primary_lang'    => sanitize_text_field(wp_unslash($_POST['primary_lang'] ?? '')),
             'keyword_prompt'  => sanitize_textarea_field(wp_unslash($_POST['keyword_prompt'] ?? '')),
             'content_prompt'  => sanitize_textarea_field(wp_unslash($_POST['content_prompt'] ?? '')),
             'custom_outline'  => sanitize_textarea_field(wp_unslash($_POST['custom_outline'] ?? '')),
@@ -788,9 +789,8 @@ class APCAI_Admin {
         ]);
 
         foreach ($posts as $p_id) {
-            $yoast_kw = get_post_meta($p_id, '_yoast_wpseo_focuskw', true);
-            $rm_kw    = get_post_meta($p_id, 'rank_math_focus_keyword', true);
-            if (empty(trim((string)$yoast_kw)) && empty(trim((string)$rm_kw))) {
+            $existing_kw = APCAI_SEO_Helper::get_post_focus_keyword($p_id);
+            if (empty($existing_kw)) {
                 $posts_missing[] = [
                     'type'  => 'post',
                     'id'    => $p_id,
@@ -809,9 +809,8 @@ class APCAI_Admin {
 
         if (!empty($tags) && !is_wp_error($tags)) {
             foreach ($tags as $t) {
-                $yoast_kw = get_term_meta($t->term_id, '_yoast_wpseo_focuskw', true);
-                $rm_kw    = get_term_meta($t->term_id, 'rank_math_focus_keyword', true);
-                if (empty(trim((string)$yoast_kw)) && empty(trim((string)$rm_kw))) {
+                $existing_kw = APCAI_SEO_Helper::get_term_focus_keyword($t->term_id, 'post_tag');
+                if (empty($existing_kw)) {
                     $tags_missing[] = [
                         'type'  => 'tag',
                         'id'    => $t->term_id,
@@ -852,8 +851,7 @@ class APCAI_Admin {
                 wp_send_json_error('Tag not found');
             }
             $target_kw = $term->name;
-            update_term_meta($id, '_yoast_wpseo_focuskw', $target_kw);
-            update_term_meta($id, 'rank_math_focus_keyword', $target_kw);
+            APCAI_SEO_Helper::set_term_focus_keyword($id, $target_kw, 'post_tag');
 
             $tag_url = get_term_link($term);
             $tag_link_html = (!empty($tag_url) && !is_wp_error($tag_url)) ? " • <a href='" . esc_url($tag_url) . "' target='_blank' style='color:#2563eb;text-decoration:underline;'>View Tag Archive &rarr;</a>" : '';
@@ -916,9 +914,8 @@ class APCAI_Admin {
             $target_kw = $post->post_title;
         }
 
-        // Simpan ke meta Yoast SEO dan Rank Math
-        update_post_meta($id, '_yoast_wpseo_focuskw', $target_kw);
-        update_post_meta($id, 'rank_math_focus_keyword', $target_kw);
+        // Simpan ke meta Yoast SEO dan Rank Math via Helper Universal
+        APCAI_SEO_Helper::set_post_focus_keyword($id, $target_kw);
 
         // Pastikan post memiliki tag Title-Cased jika belum ada
         if (empty($tags) || is_wp_error($tags)) {

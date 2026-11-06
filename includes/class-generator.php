@@ -85,7 +85,18 @@ Prioritaskan merancang ide topik artikel yang mengangkat data update, promo, ata
 
         $brand_ctx_str = implode("\n", $brand_ctx);
 
-        $target_lang = ($settings['default_lang'] ?? 'id') === 'en' ? 'English' : 'Bahasa Indonesia';
+        $raw_def_lang = $settings['default_lang'] ?? 'id';
+        $target_lang = match ($raw_def_lang) {
+            'en' => 'English',
+            'ms' => 'Bahasa Melayu',
+            default => 'Bahasa Indonesia',
+        };
+        $lang_directive = "";
+        if ($raw_def_lang === 'en') {
+            $lang_directive = "\nCRITICAL STRICT LANGUAGE DIRECTIVE: Every generated topic title, primary_keyword, intent, and angle MUST BE WRITTEN 100% IN NATIVE ENGLISH. NEVER generate in Indonesian or Malay.";
+        } elseif ($raw_def_lang === 'ms') {
+            $lang_directive = "\nARAHAN KETAT BAHASA MELAYU: Semua tajuk, kata kunci, dan sudut pandang WAJIB ditulis dalam Bahasa Melayu baku standard.";
+        }
 
         $funnel_instruction = "Distribusikan ide topik ke dalam piramida funneling pemasaran:
 - TOFU (Top of Funnel): Masalah awal, edukasi, definisi, cara, tips umum (Informational).
@@ -96,7 +107,7 @@ Prioritaskan merancang ide topik artikel yang mengangkat data update, promo, ata
             $funnel_instruction = "Hanya fokus buat ide topik pada tahap: " . strtoupper($funnel_filter);
         }
 
-        $system_prompt = "Kamu adalah Master SEO Content Strategist & Media Editor. Kamu menyusun ide judul artikel blog yang ringkas, berbobot, manusiawi, optimal untuk Search Console, dan terstruktur dalam Content Funnel (TOFU/MOFU/BOFU) untuk kategori: {$cat_name}. Tulis output dalam {$target_lang}.";
+        $system_prompt = "Kamu adalah Master SEO Content Strategist & Media Editor. Kamu menyusun ide judul artikel blog yang ringkas, berbobot, manusiawi, optimal untuk Search Console, dan terstruktur dalam Content Funnel (TOFU/MOFU/BOFU) untuk kategori: {$cat_name}. Tulis output dalam {$target_lang}.{$lang_directive}";
 
         $user_prompt = "Rancang $count ide artikel blog BARU untuk kategori '{$cat_name}'.
 
@@ -541,7 +552,7 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
         $linking = self::get_internal_link_context($category_id, $funnel_stage);
         $link_instruction = $linking['instruction'];
 
-        $default_lang = $settings['default_lang'] ?? 'id';
+        $default_lang = !empty($custom_options['primary_lang']) ? $custom_options['primary_lang'] : ($settings['default_lang'] ?? 'id');
         if ($default_lang === 'en') {
             $lang_name = 'English';
         } elseif ($default_lang === 'ms') {
@@ -644,14 +655,16 @@ ATURAN WAJIB BRANDING & PENULISAN ALAMI (ANTI-AI PATTERN):
 11. ATURAN TARGET JUMLAH KATA (WORD COUNT):
     - Panjang total artikel WAJIB berada dalam rentang {$word_count_min} hingga {$word_count_max} KATA.
     - Kembangkan setiap sub-heading secara mendalam dengan contoh nyata, rincian teknis, analisis komparasi, dan panduan langkah demi langkah agar memenuhi rentang jumlah kata ini secara proporsional tanpa mengulang-ulang kalimat filler.
-12. ATURAN BAHASA KHUSUS:
-    - Jika Bahasa Indonesia: JANGAN gunakan kata 'Panduan' pada judul atau sub-judul (WAJIB gunakan kata 'Cara').
-    - Jika Bahasa Melayu: Gunakan tatabahasa Bahasa Melayu baku standard (Malaysia/Brunei/Singapura), nada sopan, profesional, kosa kata rasmi seperti 'kaedah' atau 'cara', 'maklumat', 'pelanggan', 'kelebihan', dan elakkan istilah slanga / pasar.
+12. ATURAN BAHASA KHUSUS (CRITICAL STRICT LANGUAGE ENFORCEMENT):
+    - Jika Bahasa: English: MANDATORY STRICT REQUIREMENT: The entire article (title, focus_keyword, seo_title, seo_description, excerpt, keywords, and content_md) MUST BE WRITTEN 100% IN NATIVE FLUENT ENGLISH. Even if the topic input, brand profile, entity guidelines, or background company data are in Indonesian or Malay, you MUST TRANSLATE and WRITE EVERYTHING COMPLETELY IN ENGLISH! Under no circumstances should Indonesian or Malay words appear in the output.
+    - Jika Bahasa: Bahasa Melayu: Gunakan tatabahasa Bahasa Melayu baku standard (Malaysia/Brunei/Singapura), nada sopan, profesional, kosa kata rasmi seperti 'kaedah' atau 'cara', 'maklumat', 'pelanggan', 'kelebihan', dan elakkan istilah slanga / pasar.
+    - Jika Bahasa: Bahasa Indonesia: JANGAN gunakan kata 'Panduan' pada judul atau sub-judul (WAJIB gunakan kata 'Cara'). Gunakan Bahasa Indonesia yang mengalir, lugas, dan profesional.
 
 ATURAN STRUKTUR JSON:
 Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown wrapper dengan struktur:
 {
   \"title\": \"Judul artikel menarik, bernas, dan SEO-optimized\",
+  \"focus_keyword\": \"Frasa Kunci Utama (Focus Keyphrase 2-4 kata untuk Yoast SEO & Rank Math)\",
   \"seo_title\": \"Title tag Google (maks 60 karakter)\",
   \"seo_description\": \"Meta deskripsi persuasif (maks 155 karakter)\",
   \"excerpt\": \"Ringkasan artikel 2-3 kalimat tajam\",
@@ -1236,9 +1249,12 @@ Format Output WAJIB JSON murni:
                 $focus_kw = $topic_row->primary_keyword;
             }
         }
+        if (empty($focus_kw) && !empty($title)) {
+            $clean_t = preg_replace('/[|\-–—:]+.*$/', '', $title);
+            $focus_kw = trim($clean_t);
+        }
         if (!empty($focus_kw)) {
-            update_post_meta($post_id, '_yoast_wpseo_focuskw', $focus_kw);
-            update_post_meta($post_id, 'rank_math_focus_keyword', $focus_kw);
+            APCAI_SEO_Helper::set_post_focus_keyword($post_id, $focus_kw);
         }
 
         if (!empty($formatted_keywords)) {

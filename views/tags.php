@@ -207,7 +207,7 @@ $all_tags = get_terms([
                         $words = $has_content ? str_word_count(strip_tags($content)) : 0;
                         $t_lang = strtoupper(get_term_meta($t->term_id, '_apcai_tag_lang', true) ?: 'ID');
                         $t_funnel = strtoupper(get_term_meta($t->term_id, '_apcai_tag_funnel', true) ?: 'MOFU');
-                        $yoast_kw = get_term_meta($t->term_id, '_yoast_wpseo_focuskw', true) ?: $t->name;
+                        $yoast_kw = (class_exists('APCAI_SEO_Helper') ? APCAI_SEO_Helper::get_term_focus_keyword($t->term_id, 'post_tag') : '') ?: $t->name;
                         $tag_link = get_term_link($t);
                     ?>
                         <tr class="tag-row" data-status="<?php echo $has_content ? 'filled' : 'empty'; ?>" id="tag-row-<?php echo esc_attr($t->term_id); ?>">

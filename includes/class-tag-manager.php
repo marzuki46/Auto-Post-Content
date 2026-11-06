@@ -211,8 +211,7 @@ class APCAI_Tag_Manager {
         // Auto input ke Frasa Kunci Yoast SEO & Rank Math
         $term = get_term($term_id, 'post_tag');
         if ($term && !is_wp_error($term)) {
-            update_term_meta($term_id, '_yoast_wpseo_focuskw', $term->name);
-            update_term_meta($term_id, 'rank_math_focus_keyword', $term->name);
+            APCAI_SEO_Helper::set_term_focus_keyword($term_id, $term->name, 'post_tag');
         }
     }
 
@@ -233,12 +232,21 @@ class APCAI_Tag_Manager {
             default  => '600 hingga 900 kata',
         };
 
-        // Bahasa output
+        // Bahasa output & Aturan Ketat
         $lang_desc = match ($lang) {
             'ms'    => 'Bahasa Melayu standard baku (Malaysia/Nusantara)',
             'en'    => 'English (fluent, natural, authoritative)',
             default => 'Bahasa Indonesia yang mengalir, lugas, dan profesional',
         };
+
+        $lang_strict_rule = "";
+        if ($lang === 'en') {
+            $lang_strict_rule = "7. CRITICAL LANGUAGE REQUIREMENT: The entire copywriting content, all headings (H2-H4), table headers/rows, and Call To Action MUST BE WRITTEN 100% IN STRICT FLUENT ENGLISH. Even if the tag name or related post titles are in Indonesian, explain and curate everything exclusively in natural English. Do NOT output Indonesian or Malay.";
+        } elseif ($lang === 'ms') {
+            $lang_strict_rule = "7. ARAHAN KETAT BAHASA MELAYU: Seluruh teks copywriting, tajuk bahagian, dan jadual WAJIB ditulis dalam Bahasa Melayu baku standard profesional.";
+        } else {
+            $lang_strict_rule = "7. ARAHAN BAHASA INDONESIA: Seluruh teks copywriting tag ditulis dalam Bahasa Indonesia yang profesional dan mengalir tanpa kata 'Panduan'.";
+        }
 
         // Arahan Funneling
         $funnel_desc = match ($funnel) {
@@ -300,6 +308,7 @@ ATURAN STRUKTUR & SEO HEADING PALING KETAT:
    - Dilarang menggunakan garis pemisah mendatar (---, ***, ___).
 6. INTERNAL LINK & CALL TO ACTION:
    Sertakan link kontekstual ke Brand Resmi [{$site_name}]({$site_url}) dengan ajakan aksi (Call To Action) yang elegan di akhir tulisan.
+{$lang_strict_rule}
 
 Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
 
@@ -428,8 +437,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
             update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
 
             // Auto input frasa kunci utama Yoast & Rank Math
-            update_term_meta($tag_id, '_yoast_wpseo_focuskw', $tag_name);
-            update_term_meta($tag_id, 'rank_math_focus_keyword', $tag_name);
+            APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $tag_name, 'post_tag');
         }
 
         wp_send_json_success([
@@ -494,9 +502,8 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($tag_id, '_apcai_tag_length', $length);
         update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
 
-        // Auto input ke frasa kunci Yoast SEO
-        update_term_meta($tag_id, '_yoast_wpseo_focuskw', $tag_name);
-        update_term_meta($tag_id, 'rank_math_focus_keyword', $tag_name);
+        // Auto input ke frasa kunci Yoast SEO & Rank Math
+        APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $tag_name, 'post_tag');
 
         // Catat ke Log dengan Link URL yang bisa diklik
         global $wpdb;
@@ -542,6 +549,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         if (isset($_POST['daily_count'])) $settings['tag_schedule_daily_count'] = max(1, min(20, (int)$_POST['daily_count']));
         if (isset($_POST['exec_mode'])) $settings['tag_schedule_execution_mode'] = sanitize_text_field($_POST['exec_mode']);
         update_option('apcai_settings', $settings);
+        self::sync_tag_schedule();
 
         wp_send_json_success([
             'enabled' => $enabled,
@@ -575,8 +583,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
 
         $term = get_term($tag_id, 'post_tag');
         if ($term && !is_wp_error($term)) {
-            update_term_meta($tag_id, '_yoast_wpseo_focuskw', $term->name);
-            update_term_meta($tag_id, 'rank_math_focus_keyword', $term->name);
+            APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $term->name, 'post_tag');
         }
 
         wp_send_json_success('Konten tag berhasil diperbarui.');
@@ -624,9 +631,8 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($target['id'], '_apcai_tag_length', $length);
         update_term_meta($target['id'], '_apcai_tag_funnel', $funnel);
 
-        // Auto input ke frasa kunci Yoast SEO
-        update_term_meta($target['id'], '_yoast_wpseo_focuskw', $target['name']);
-        update_term_meta($target['id'], 'rank_math_focus_keyword', $target['name']);
+        // Auto input ke frasa kunci Yoast SEO & Rank Math
+        APCAI_SEO_Helper::set_term_focus_keyword($target['id'], $target['name'], 'post_tag');
 
         // Update kuota tracker hari ini
         $tracker['count']++;
@@ -648,5 +654,93 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         ]);
 
         return true;
+    }
+
+    /**
+     * Sinkronisasi Jadwal Cron Khusus Tag (Independen dari Jadwal Artikel)
+     */
+    public static function sync_tag_schedule() {
+        $settings = get_option('apcai_settings', []);
+        $enabled = !empty($settings['tag_schedule_enabled']);
+
+        if (!$enabled) {
+            update_option('apcai_tag_scheduled_slots_today', []);
+            if (wp_next_scheduled('apcai_cron_tag_executor')) {
+                wp_clear_scheduled_hook('apcai_cron_tag_executor');
+            }
+            return;
+        }
+
+        // Pastikan cron hook terdaftar setiap 10 menit
+        if (!wp_next_scheduled('apcai_cron_tag_executor')) {
+            wp_schedule_event(time() + 60, 'apcai_ten_minutes', 'apcai_cron_tag_executor');
+        }
+
+        $daily_count = max(1, min(20, (int)($settings['tag_schedule_daily_count'] ?? 3)));
+        $now = current_time('timestamp');
+        $today_start = strtotime('today midnight', $now);
+
+        // Rentang jam aktif pengerjaan tag (08:00 - 21:00)
+        $start_hour = 8;
+        $end_hour = 21;
+        $total_minutes = ($end_hour - $start_hour) * 60;
+        $step = floor($total_minutes / $daily_count);
+
+        $timestamps = [];
+        for ($i = 0; $i < $daily_count; $i++) {
+            $base_offset = $i * $step;
+            $jitter = rand(0, max(5, $step - 10));
+            $minute_offset = $base_offset + $jitter;
+            $slot_ts = $today_start + ($start_hour * 3600) + ($minute_offset * 60);
+
+            if ($slot_ts > $now) {
+                $timestamps[] = $slot_ts;
+            }
+        }
+        sort($timestamps);
+
+        update_option('apcai_tag_scheduled_slots_today', $timestamps);
+        update_option('apcai_tag_slots_generated_date', date_i18n('Y-m-d', $now));
+    }
+
+    /**
+     * Eksekutor Cron Terjadwal Khusus Tag (HANYA MEMBUAT TAG, TIDAK MEMPOSTING ARTIKEL)
+     */
+    public static function run_scheduled_tag_posting() {
+        $settings = get_option('apcai_settings', []);
+        if (empty($settings['tag_schedule_enabled'])) {
+            return;
+        }
+
+        $now = current_time('timestamp');
+        $today_date = date_i18n('Y-m-d', $now);
+        $last_generated_date = get_option('apcai_tag_slots_generated_date', '');
+        $slots = get_option('apcai_tag_scheduled_slots_today', []);
+
+        // Sinkronisasi ulang jika berganti hari atau slot kosong
+        if ($last_generated_date !== $today_date || empty($slots) || !is_array($slots)) {
+            self::sync_tag_schedule();
+            $slots = get_option('apcai_tag_scheduled_slots_today', []);
+        }
+
+        $due_slots = [];
+        $remaining_slots = [];
+
+        foreach ($slots as $ts) {
+            if ($ts <= $now) {
+                $due_slots[] = $ts;
+            } else {
+                $remaining_slots[] = $ts;
+            }
+        }
+
+        if (empty($due_slots)) {
+            return;
+        }
+
+        update_option('apcai_tag_scheduled_slots_today', $remaining_slots);
+
+        // Eksekusi tepat 1 copywriting tag
+        self::cron_step_tag_generator();
     }
 }
