@@ -26,7 +26,14 @@
     </div>
 
     <div class="apcai-card">
-        <h2>Daftar Topik AI Tersedia</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+            <h2>Daftar Topik AI Tersedia</h2>
+            <?php if (!empty($topics)): ?>
+            <button type="button" id="btn-fix-topic-keywords" class="apcai-btn apcai-btn-secondary" style="font-size:12px;padding:6px 14px;">
+                ⚡ Perbaiki & Sinkronkan Keyword Topik dari Judul
+            </button>
+            <?php endif; ?>
+        </div>
         <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:14px;">
             Topik-topik ini siap diposting otomatis sesuai jam posting harian dan kategori yang ditentukan:
         </p>

@@ -38,6 +38,7 @@ class APCAI_Admin {
         // Detect Duplicate & Cannibalized Keywords Tool AJAX
         add_action('wp_ajax_apcai_scan_duplicate_keywords', [__CLASS__, 'ajax_scan_duplicate_keywords']);
         add_action('wp_ajax_apcai_auto_resolve_keyword_conflict', [__CLASS__, 'ajax_auto_resolve_keyword_conflict']);
+        add_action('wp_ajax_apcai_fix_duplicate_topic_keywords', [__CLASS__, 'ajax_fix_duplicate_topic_keywords']);
 
         // Clear Activity Logs AJAX
         add_action('wp_ajax_apcai_clear_logs', [__CLASS__, 'ajax_clear_logs']);
@@ -406,6 +407,68 @@ class APCAI_Admin {
         }
 
         wp_send_json_success($res);
+    }
+
+    /**
+     * AJAX: Perbaiki & sinkronkan primary_keyword seluruh topik dari judul spesifiknya
+     */
+    public static function ajax_fix_duplicate_topic_keywords() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        global $wpdb;
+        $t_topics = APCAI_DB::table_topics();
+        $topics = $wpdb->get_results("SELECT id, title, primary_keyword FROM {$t_topics}");
+
+        if (empty($topics)) {
+            wp_send_json_error('Tidak ada topik ditemukan di database.');
+        }
+
+        $settings = get_option('apcai_settings', []);
+        $brand_name = strtolower(trim($settings['brand_name'] ?? ''));
+        $updated_count = 0;
+        $seen_keywords = [];
+
+        foreach ($topics as $t) {
+            $current_kw = strtolower(trim($t->primary_keyword));
+            $needs_update = false;
+
+            // Cek apakah keyword kosong, atau mengandung nama brand/dealer, atau duplikat dari baris topik sebelumnya
+            if (empty($current_kw) || strlen($current_kw) < 3) {
+                $needs_update = true;
+            } elseif (!empty($brand_name) && str_contains($current_kw, $brand_name)) {
+                $needs_update = true;
+            } elseif (in_array($current_kw, $seen_keywords, true)) {
+                $needs_update = true;
+            }
+
+            if ($needs_update) {
+                $new_kw = APCAI_SEO_Helper::extract_focus_keyword_from_title($t->title);
+                if (empty($new_kw)) {
+                    $new_kw = $t->title;
+                }
+                if (in_array(strtolower($new_kw), $seen_keywords, true)) {
+                    $new_kw = APCAI_SEO_Helper::resolve_cannibalization($new_kw, 'post', 0, 'id', $t->title);
+                }
+
+                $wpdb->update($t_topics, [
+                    'primary_keyword' => $new_kw,
+                    'updated_at'      => current_time('mysql'),
+                ], ['id' => $t->id]);
+
+                $seen_keywords[] = strtolower($new_kw);
+                $updated_count++;
+            } else {
+                $seen_keywords[] = $current_kw;
+            }
+        }
+
+        wp_send_json_success([
+            'updated' => $updated_count,
+            'message' => "Berhasil menyinkronkan & mendiferensiasi {$updated_count} keyword topik berdasarkan judul spesifiknya.",
+        ]);
     }
 
     public static function ajax_generate_outline_now() {

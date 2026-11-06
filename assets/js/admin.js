@@ -199,6 +199,30 @@ jQuery(document).ready(function ($) {
         });
     });
 
+    // Fix & Synchronize Duplicate Topic Keywords from Title
+    $('#btn-fix-topic-keywords').on('click', function (e) {
+        e.preventDefault();
+        const $btn = $(this);
+        const originalText = $btn.html();
+        $btn.prop('disabled', true).html('<span class="apcai-spinner"></span> Menyinkronkan...');
+
+        $.post(ajaxurl, {
+            action: 'apcai_fix_duplicate_topic_keywords',
+            nonce: nonce,
+        }, function (res) {
+            $btn.prop('disabled', false).html(originalText);
+            if (res.success && res.data) {
+                showNotice(res.data.message, 'success');
+                setTimeout(function () { location.reload(); }, 1200);
+            } else {
+                showNotice('Gagal: ' + (res.data || 'Unknown error'), 'error');
+            }
+        }).fail(function () {
+            $btn.prop('disabled', false).html(originalText);
+            showNotice('Terjadi kesalahan jaringan.', 'error');
+        });
+    });
+
     // Delete Topic
     $('.btn-delete-topic').on('click', function (e) {
         e.preventDefault();

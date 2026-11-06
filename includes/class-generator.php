@@ -119,11 +119,11 @@ Prioritaskan merancang ide topik artikel yang mengangkat data update, promo, ata
 Artikel yang sudah ada di kategori ini (JANGAN ulangi):
 {$existing_text}
 
-ATURAN FORMAT JUDUL:
+ATURAN FORMAT JUDUL & KEYWORD:
 1. BATAS PANJANG: Wajib 45 - 65 karakter (maksimal 70 karakter).
 2. Dilarang kata-kata klise AI ('Menyelami', 'Mengupas Tuntas', 'Rombak UI', 'Mesin Konversi', titik dua panjang).
 3. ATURAN KATA 'CARA' (KHUSUS BAHASA INDONESIA): Dilarang menggunakan kata 'Panduan' (seperti 'Panduan Lengkap', 'Panduan Memulai', 'Panduan Praktis'). WAJIB gunakan kata 'Cara' (contoh: 'Cara...', 'Cara Mudah...', 'Cara Efektif...', 'Cara Memilih...').
-4. Primary keyword natural.
+4. ATURAN KETAT PRIMARY KEYWORD: Primary keyword WAJIB 100% SPESIFIK dan unik mengikuti subjek/tipe produk tiap baris judul (misal: 'Honda ADV 160 vs PCX 160', 'Honda BeAT Terbaru', 'Merawat Motor Honda'). DILARANG KERAS menggunakan nama brand umum/dealer (seperti 'dealer motor honda solo' atau nama perusahaan) sebagai primary_keyword! Setiap baris topik WAJIB memiliki primary_keyword yang BERBEDA satu sama lain!
 5. Tentukan nilai 'funnel_stage' secara presisi: 'tofu', 'mofu', atau 'bofu'.
 
 Balas HANYA dengan JSON array valid tanpa teks pengantar:
@@ -154,6 +154,23 @@ Balas HANYA dengan JSON array valid tanpa teks pengantar:
                 $title = self::sanitize_indonesian_title($title);
             }
             $keyword = sanitize_text_field($item['primary_keyword'] ?? '');
+            
+            // Validasi & Proteksi Anti-Duplikasi Keyword Topik
+            $brand_clean = strtolower(trim($settings['brand_name'] ?? ''));
+            $is_brand_keyword = (!empty($brand_clean) && str_contains(strtolower($keyword), $brand_clean));
+            
+            if (empty($keyword) || $is_brand_keyword || strlen($keyword) < 3) {
+                $keyword = APCAI_SEO_Helper::extract_focus_keyword_from_title($title);
+            }
+            if (empty($keyword)) {
+                $keyword = $title;
+            }
+
+            // Pastikan tidak kembar dengan keyword topik yang sudah ada
+            $kw_exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM $table_topics WHERE primary_keyword = %s", $keyword));
+            if ($kw_exists) {
+                $keyword = APCAI_SEO_Helper::resolve_cannibalization($keyword, 'post', 0, $raw_def_lang, $title);
+            }
             $intent = sanitize_text_field($item['intent'] ?? 'informational');
             $funnel = strtolower(sanitize_text_field($item['funnel_stage'] ?? 'tofu'));
             if (!in_array($funnel, ['tofu', 'mofu', 'bofu'])) $funnel = 'tofu';
@@ -664,7 +681,7 @@ ATURAN STRUKTUR JSON:
 Keluarkan HASIL AKHIR HANYA dalam format JSON valid tanpa teks pengantar atau markdown wrapper dengan struktur:
 {
   \"title\": \"Judul artikel menarik, bernas, dan SEO-optimized\",
-  \"focus_keyword\": \"Frasa Kunci Utama (Focus Keyphrase 2-4 kata untuk Yoast SEO & Rank Math)\",
+  \"focus_keyword\": \"Frasa Kunci Utama SPESIFIK subjek/tipe produk artikel ini (2-4 kata, contoh: 'Honda ADV 160 vs PCX 160' atau 'Review Honda BeAT'). DILARANG KERAS menggunakan kata kunci brand dealer umum!\",
   \"seo_title\": \"Title tag Google (maks 60 karakter)\",
   \"seo_description\": \"Meta deskripsi persuasif (maks 155 karakter)\",
   \"excerpt\": \"Ringkasan artikel 2-3 kalimat tajam\",
@@ -1249,12 +1266,18 @@ Format Output WAJIB JSON murni:
                 $focus_kw = $topic_row->primary_keyword;
             }
         }
+
+        // Proteksi jika keyword terdeteksi broad brand name
+        $brand_clean = strtolower(trim($settings['brand_name'] ?? ''));
+        if (!empty($brand_clean) && str_contains(strtolower($focus_kw), $brand_clean)) {
+            $focus_kw = '';
+        }
+
         if (empty($focus_kw) && !empty($title)) {
-            $clean_t = preg_replace('/[|\-–—:]+.*$/', '', $title);
-            $focus_kw = trim($clean_t);
+            $focus_kw = APCAI_SEO_Helper::extract_focus_keyword_from_title($title);
         }
         if (!empty($focus_kw)) {
-            // Algoritma Anti-Kanibalisasi: Bedakan keyword artikel dari keyword tag
+            // Algoritma Anti-Kanibalisasi: Bedakan keyword artikel dari keyword tag dan sesama post
             $resolved_kw = APCAI_SEO_Helper::resolve_cannibalization($focus_kw, 'post', $post_id, $language, $title);
             APCAI_SEO_Helper::set_post_focus_keyword($post_id, $resolved_kw);
         }
