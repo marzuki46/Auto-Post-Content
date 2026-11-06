@@ -3,7 +3,7 @@
  * Plugin Name: Auto Post Content AI & Topic Generator
  * Plugin URI: https://trimarzuki.my.id/
  * Description: Enterprise WordPress AI automation engine for intelligent topic research, in-depth multi-funnel SEO articles (ID & EN), direct Google Gemini & 9Router/OpenAI API integration, entity-based topical authority, custom WhatsApp & affiliate CTA anchors, and resilient background scheduling.
- * Version: 1.3.6
+ * Version: 1.3.7
  * Author: Marzuki
  * Author URI: https://trimarzuki.my.id/
  * Text Domain: auto-post-content
@@ -26,7 +26,7 @@ if (version_compare(PHP_VERSION, '8.3.0', '<')) {
     return;
 }
 
-define('APCAI_VERSION', '1.3.6');
+define('APCAI_VERSION', '1.3.7');
 define('APCAI_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('APCAI_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('APCAI_PLUGIN_FILE', __FILE__);

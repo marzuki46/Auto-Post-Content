@@ -35,6 +35,9 @@ class APCAI_Admin {
         add_action('wp_ajax_apcai_scan_missing_keywords', [__CLASS__, 'ajax_scan_missing_keywords']);
         add_action('wp_ajax_apcai_fix_single_keyword', [__CLASS__, 'ajax_fix_single_keyword']);
 
+        // Detect Duplicate & Cannibalized Keywords Tool AJAX
+        add_action('wp_ajax_apcai_scan_duplicate_keywords', [__CLASS__, 'ajax_scan_duplicate_keywords']);
+
         // Clear Activity Logs AJAX
         add_action('wp_ajax_apcai_clear_logs', [__CLASS__, 'ajax_clear_logs']);
 
@@ -828,6 +831,23 @@ class APCAI_Admin {
     }
 
     /**
+     * AJAX: Pindai duplikasi / kanibalisasi keyword antar Post, Page, dan Tag
+     */
+    public static function ajax_scan_duplicate_keywords() {
+        check_ajax_referer('apcai_admin_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        if (class_exists('APCAI_SEO_Helper')) {
+            $report = APCAI_SEO_Helper::audit_duplicate_keywords();
+            wp_send_json_success($report);
+        } else {
+            wp_send_json_error('APCAI_SEO_Helper class not found.');
+        }
+    }
+
+    /**
      * AJAX: Perbaiki / Input target keyword ke item spesifik (post atau tag)
      */
     public static function ajax_fix_single_keyword() {
@@ -934,15 +954,17 @@ class APCAI_Admin {
         $now_time  = current_time('timestamp');
         $new_mod_time = $orig_time;
 
+        $days_spread = max(1, min(60, absint($_POST['days_spread'] ?? 7)));
+
         if ($date_mode === 'smart_organic') {
             $age_seconds = $now_time - $orig_time;
             if ($age_seconds <= 86400) {
-                // Artikel baru (terbit < 24 jam lalu): jeda alami 15-45 menit setelah post_date
-                $jitter = rand(15 * 60, 45 * 60);
+                // Artikel baru (terbit < 24 jam lalu): jeda alami 45-180 menit setelah post_date
+                $jitter = rand(45 * 60, 180 * 60);
                 $new_mod_time = min($now_time, $orig_time + $jitter);
             } else {
-                // Artikel lama: jeda acak 2 jam s/d 12 jam setelah tanggal terbit aslinya
-                $jitter = rand(2 * 3600, 12 * 3600);
+                // Artikel lama: jeda acak 6 jam s/d 48 jam setelah tanggal terbit aslinya
+                $jitter = rand(6 * 3600, 48 * 3600);
                 $new_mod_time = min($now_time, $orig_time + $jitter);
             }
         } elseif ($date_mode === 'gradual_recent') {
@@ -952,6 +974,15 @@ class APCAI_Admin {
             $mins_back = rand(5, 55);
             $candidate = $now_time - ($days_back * 86400) - ($hours_back * 3600) - ($mins_back * 60);
             $new_mod_time = max($orig_time, $candidate);
+        } elseif ($date_mode === 'custom_spread') {
+            // Distribusi revisi multi-hari ke belakang (misal 1-7 atau 1-14 hari lalu)
+            $random_day_back = rand(1, $days_spread);
+            $random_hours = rand(8, 20); // Jam kerja natural 08:00 - 20:00
+            $random_mins = rand(1, 59);
+            $random_secs = rand(1, 59);
+            $target_day_ts = strtotime("-{$random_day_back} days midnight", $now_time);
+            $candidate = $target_day_ts + ($random_hours * 3600) + ($random_mins * 60) + $random_secs;
+            $new_mod_time = max($orig_time, min($now_time, $candidate));
         } else {
             // keep_original
             $new_mod_time = $orig_time;

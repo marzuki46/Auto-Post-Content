@@ -683,10 +683,16 @@ jQuery(document).ready(function ($) {
         const $progressWrapper = $('#missing-kw-progress-wrapper');
         const $summary = $('#missing-kw-scan-summary');
 
+        const dailyLimit = parseInt($('#backfill_daily_limit').val(), 10) || 10;
+        if (missingQueue.length > dailyLimit) {
+            missingQueue = missingQueue.slice(0, dailyLimit);
+            missingTotal = missingQueue.length;
+        }
+
         $startBtn.prop('disabled', true);
         $scanBtn.prop('disabled', true);
         $progressWrapper.slideDown(200);
-        $summary.html('<span style="color:#2563eb;font-weight:600;">Memproses input keyword & memperbarui postingan... Jangan tutup halaman ini.</span>');
+        $summary.html('<span style="color:#2563eb;font-weight:600;">Memproses input keyword & memperbarui postingan (Dibatasi maks ' + dailyLimit + ' hari ini)... Jangan tutup halaman ini.</span>');
 
         processNextMissingKeywordItem();
     });
@@ -712,6 +718,7 @@ jQuery(document).ready(function ($) {
 
         const item = missingQueue.shift();
         const dateMode = $('input[name="backfill_date_mode"]:checked').val() || 'smart_organic';
+        const daysSpread = parseInt($('#backfill_days_spread').val(), 10) || 7;
         const percent = Math.round((missingProcessed / missingTotal) * 100);
         $('#missing-kw-progress-bar').css('width', percent + '%');
         $('#missing-kw-percent-text').text(percent + '%');
@@ -727,17 +734,82 @@ jQuery(document).ready(function ($) {
                 nonce: nonce,
                 item_type: item.type,
                 item_id: item.id,
-                date_mode: dateMode
+                date_mode: dateMode,
+                days_spread: daysSpread
             },
             success: function (res) {
                 missingProcessed++;
-                // Jeda alami acak 800ms - 1500ms agar aman bagi server
-                setTimeout(processNextMissingKeywordItem, Math.floor(Math.random() * 700) + 800);
+                // Jeda alami santai 2000ms - 4000ms agar waktu eksekusi tidak terlalu cepat
+                setTimeout(processNextMissingKeywordItem, Math.floor(Math.random() * 2000) + 2000);
             },
             error: function () {
                 missingProcessed++;
-                setTimeout(processNextMissingKeywordItem, 1000);
+                setTimeout(processNextMissingKeywordItem, 2500);
             }
         });
     }
+
+    // -----------------------------------------------------------------
+    // Scan Duplicate & Cannibalized Keywords Tool (Post / Page / Tag)
+    // -----------------------------------------------------------------
+    $('#btn-scan-duplicate-keywords').on('click', function (e) {
+        e.preventDefault();
+        const $btn = $(this);
+        const originalText = $btn.html();
+        $btn.html('<span class="apcai-spinner"></span> Memindai Semantik...').prop('disabled', true);
+
+        const $results = $('#duplicate-kw-results');
+        const $summary = $('#duplicate-kw-summary');
+        const $tableBody = $('#duplicate-kw-table-body');
+
+        $results.hide();
+        $tableBody.empty();
+
+        $.post(ajaxurl, {
+            action: 'apcai_scan_duplicate_keywords',
+            nonce: nonce,
+        }, function (res) {
+            $btn.html(originalText).prop('disabled', false);
+            $results.slideDown(200);
+
+            if (res.success && res.data) {
+                const data = res.data;
+                if (data.total_conflicts === 0) {
+                    $summary.css({ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534' }).html(
+                        '🎉 <strong>Luar Biasa! Tidak Ditemukan Kanibalisasi Kata Kunci.</strong> Dari ' + data.total_scanned + ' konten yang dipindai (Post, Page, Tag), semua memiliki target focus keyphrase unik dan saling melengkapi.'
+                    );
+                    $('#duplicate-kw-table-wrapper').hide();
+                } else {
+                    $summary.css({ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e' }).html(
+                        '⚠️ <strong>Ditemukan ' + data.total_conflicts + ' Potensi Kanibalisasi / Duplikasi</strong> dari ' + data.total_scanned + ' konten yang dipindai. Segera diferensiasikan kata kunci berikut agar tidak bersaing di Google:'
+                    );
+                    $('#duplicate-kw-table-wrapper').show();
+
+                    $.each(data.conflicts, function (_, c) {
+                        const badgeColor = c.similarity >= 95 ? '#ef4444' : '#f59e0b';
+                        const typeBadgeA = '<span class="apcai-badge apcai-badge-blue" style="font-size:10px;text-transform:uppercase;">' + c.item_a.type + '</span>';
+                        const typeBadgeB = '<span class="apcai-badge apcai-badge-purple" style="font-size:10px;text-transform:uppercase;">' + c.item_b.type + '</span>';
+
+                        const tr = $('<tr></tr>');
+                        tr.append('<td style="padding:8px 12px;"><span style="background:' + badgeColor + ';color:#fff;font-weight:700;padding:2px 8px;border-radius:12px;font-size:11px;">' + c.similarity + '%</span><div style="font-size:10px;color:#64748b;margin-top:2px;">' + c.match_type + '</div></td>');
+                        tr.append('<td style="padding:8px 12px;">' + typeBadgeA + ' <strong style="color:#0f172a;">' + c.item_a.title + '</strong></td>');
+                        tr.append('<td style="padding:8px 12px;">' + typeBadgeB + ' <strong style="color:#0f172a;">' + c.item_b.title + '</strong></td>');
+                        tr.append('<td style="padding:8px 12px;"><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#2563eb;">' + c.item_a.keyword + '</code> <span style="color:#94a3b8;">vs</span> <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#059669;">' + c.item_b.keyword + '</code></td>');
+                        tr.append('<td style="padding:8px 12px;text-align:right;"><a href="' + (c.item_a.edit_url || '#') + '" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:2px 8px;font-size:11px;margin-right:4px;">Edit A</a><a href="' + (c.item_b.edit_url || '#') + '" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:2px 8px;font-size:11px;">Edit B</a></td>');
+                        $tableBody.append(tr);
+                    });
+                }
+            } else {
+                $summary.css({ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }).html(
+                    'Gagal melakukan audit: ' + (res.data || 'Unknown error')
+                );
+            }
+        }).fail(function () {
+            $btn.html(originalText).prop('disabled', false);
+            $results.slideDown(200);
+            $summary.css({ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }).html(
+                'Terjadi kesalahan jaringan atau server timeout saat memindai konten.'
+            );
+        });
+    });
 });

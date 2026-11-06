@@ -331,4 +331,109 @@ class APCAI_SEO_Helper {
             return "{$candidate_kw} {$sfx}";
         }
     }
+
+    /**
+     * Audit & Deteksi Seluruh Duplikasi / Kanibalisasi Keyword (Post vs Page vs Tag)
+     */
+    public static function audit_duplicate_keywords(): array {
+        $inventory = [];
+
+        // 1. Ambil Semua Posts (Published)
+        $posts = get_posts([
+            'post_type'      => 'post',
+            'post_status'    => 'publish',
+            'posts_per_page' => 200,
+            'fields'         => 'ids',
+        ]);
+        foreach ($posts as $p_id) {
+            $kw = self::get_post_focus_keyword($p_id);
+            if (!empty($kw)) {
+                $inventory[] = [
+                    'id'       => $p_id,
+                    'type'     => 'post',
+                    'title'    => get_the_title($p_id),
+                    'keyword'  => $kw,
+                    'view_url' => get_permalink($p_id),
+                    'edit_url' => get_edit_post_link($p_id),
+                ];
+            }
+        }
+
+        // 2. Ambil Semua Pages (Published)
+        $pages = get_posts([
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'posts_per_page' => 100,
+            'fields'         => 'ids',
+        ]);
+        foreach ($pages as $pg_id) {
+            $kw = self::get_post_focus_keyword($pg_id);
+            if (!empty($kw)) {
+                $inventory[] = [
+                    'id'       => $pg_id,
+                    'type'     => 'page',
+                    'title'    => get_the_title($pg_id),
+                    'keyword'  => $kw,
+                    'view_url' => get_permalink($pg_id),
+                    'edit_url' => get_edit_post_link($pg_id),
+                ];
+            }
+        }
+
+        // 3. Ambil Semua Tags
+        $tags = get_terms([
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+            'number'     => 150,
+        ]);
+        if (!empty($tags) && !is_wp_error($tags)) {
+            foreach ($tags as $t) {
+                $kw = self::get_term_focus_keyword($t->term_id, 'post_tag');
+                if (!empty($kw)) {
+                    $t_link = get_term_link($t);
+                    $inventory[] = [
+                        'id'       => $t->term_id,
+                        'type'     => 'tag',
+                        'title'    => $t->name,
+                        'keyword'  => $kw,
+                        'view_url' => (!is_wp_error($t_link) ? $t_link : ''),
+                        'edit_url' => get_edit_term_link($t->term_id, 'post_tag'),
+                    ];
+                }
+            }
+        }
+
+        // 4. Deteksi Konflik Berdasarkan Kemiripan Semantik (Threshold >= 70%)
+        $conflicts = [];
+        $count = count($inventory);
+
+        for ($i = 0; $i < $count; $i++) {
+            for ($j = $i + 1; $j < $count; $j++) {
+                $a = $inventory[$i];
+                $b = $inventory[$j];
+
+                $sim = self::calculate_keyword_similarity($a['keyword'], $b['keyword']);
+                if ($sim >= 0.70) {
+                    $match_type = ($a['keyword'] === $b['keyword']) ? 'Identik (Exact Duplicate)' : 'Tinggi (Semantically Similar)';
+                    $conflicts[] = [
+                        'similarity'  => round($sim * 100),
+                        'match_type'  => $match_type,
+                        'item_a'      => $a,
+                        'item_b'      => $b,
+                    ];
+                }
+            }
+        }
+
+        // Urutkan konflik dari similarity tertinggi
+        usort($conflicts, function ($x, $y) {
+            return $y['similarity'] <=> $x['similarity'];
+        });
+
+        return [
+            'total_scanned'   => $count,
+            'total_conflicts' => count($conflicts),
+            'conflicts'       => $conflicts,
+        ];
+    }
 }

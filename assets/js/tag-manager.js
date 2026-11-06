@@ -183,7 +183,8 @@ jQuery(document).ready(function ($) {
                     }
                 }
                 updateStatsCounter();
-                processNextBatchItem();
+                // Jeda santai alami 3000ms - 5000ms per tag agar tidak terlalu cepat
+                setTimeout(processNextBatchItem, Math.floor(Math.random() * 2000) + 3000);
             },
             error: function () {
                 completedCount++;
@@ -192,7 +193,7 @@ jQuery(document).ready(function ($) {
                         '<span class="apcai-badge apcai-badge-red">⚠️ Timeout / Skip</span>'
                     );
                 }
-                processNextBatchItem();
+                setTimeout(processNextBatchItem, 3000);
             }
         });
     }
