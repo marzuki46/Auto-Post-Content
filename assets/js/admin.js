@@ -783,6 +783,7 @@ jQuery(document).ready(function ($) {
                     $summary.css({ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e' }).html(
                         '⚠️ <strong>Ditemukan ' + data.total_conflicts + ' Potensi Kanibalisasi / Duplikasi</strong> dari ' + data.total_scanned + ' konten yang dipindai. Segera diferensiasikan kata kunci berikut agar tidak bersaing di Google:'
                     );
+                    $('#duplicate-kw-actions').show();
                     $('#duplicate-kw-table-wrapper').show();
 
                     $.each(data.conflicts, function (_, c) {
@@ -795,11 +796,18 @@ jQuery(document).ready(function ($) {
                         tr.append('<td style="padding:8px 12px;">' + typeBadgeA + ' <strong style="color:#0f172a;">' + c.item_a.title + '</strong></td>');
                         tr.append('<td style="padding:8px 12px;">' + typeBadgeB + ' <strong style="color:#0f172a;">' + c.item_b.title + '</strong></td>');
                         tr.append('<td style="padding:8px 12px;"><code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#2563eb;">' + c.item_a.keyword + '</code> <span style="color:#94a3b8;">vs</span> <code style="background:#f1f5f9;padding:2px 6px;border-radius:4px;color:#059669;">' + c.item_b.keyword + '</code></td>');
-                        tr.append('<td style="padding:8px 12px;text-align:right;"><a href="' + (c.item_a.edit_url || '#') + '" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:2px 8px;font-size:11px;margin-right:4px;">Edit A</a><a href="' + (c.item_b.edit_url || '#') + '" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:2px 8px;font-size:11px;">Edit B</a></td>');
+                        tr.append(
+                            '<td style="padding:8px 12px;text-align:right;white-space:nowrap;">' +
+                            '<button type="button" class="btn-resolve-item apcai-btn apcai-btn-primary" data-id="' + c.item_a.id + '" data-type="' + c.item_a.type + '" style="padding:2px 8px;font-size:11px;margin-right:4px;">⚡ Auto-Fix</button>' +
+                            '<a href="' + (c.item_a.edit_url || '#') + '" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:2px 8px;font-size:11px;margin-right:4px;">Edit A</a>' +
+                            '<a href="' + (c.item_b.edit_url || '#') + '" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:2px 8px;font-size:11px;">Edit B</a>' +
+                            '</td>'
+                        );
                         $tableBody.append(tr);
                     });
                 }
             } else {
+                $('#duplicate-kw-actions').hide();
                 $summary.css({ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }).html(
                     'Gagal melakukan audit: ' + (res.data || 'Unknown error')
                 );
@@ -807,9 +815,79 @@ jQuery(document).ready(function ($) {
         }).fail(function () {
             $btn.html(originalText).prop('disabled', false);
             $results.slideDown(200);
+            $('#duplicate-kw-actions').hide();
             $summary.css({ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }).html(
                 'Terjadi kesalahan jaringan atau server timeout saat memindai konten.'
             );
         });
+    });
+
+    // Auto-Fix Individual Conflict Item
+    $(document).on('click', '.btn-resolve-item', function (e) {
+        e.preventDefault();
+        const $b = $(this);
+        const id = $b.data('id');
+        const type = $b.data('type');
+        $b.prop('disabled', true).text('Memproses...');
+
+        $.post(ajaxurl, {
+            action: 'apcai_auto_resolve_keyword_conflict',
+            nonce: nonce,
+            id: id,
+            type: type,
+        }, function (res) {
+            if (res.success && res.data) {
+                $b.removeClass('apcai-btn-primary').addClass('apcai-btn-secondary').text('✅ ' + res.data.keyword);
+            } else {
+                $b.prop('disabled', false).text('Gagal');
+            }
+        }).fail(function () {
+            $b.prop('disabled', false).text('Error');
+        });
+    });
+
+    // Bulk Resolve All Conflicts Sequentially
+    $('#btn-resolve-all-conflicts').on('click', function (e) {
+        e.preventDefault();
+        const $bulkBtn = $(this);
+        const $status = $('#resolve-all-status');
+        const $items = $('.btn-resolve-item');
+        if ($items.length === 0) return;
+
+        $bulkBtn.prop('disabled', true).text('⏳ Sedang Memperbaiki Semua...');
+        let idx = 0;
+
+        function processNext() {
+            if (idx >= $items.length) {
+                $status.html('<span style="color:#10b981;font-weight:700;">✅ Selesai! Memindai ulang...</span>');
+                setTimeout(function () {
+                    $('#btn-scan-duplicate-keywords').trigger('click');
+                }, 1000);
+                return;
+            }
+
+            const $btnItem = $($items[idx]);
+            const id = $btnItem.data('id');
+            const type = $btnItem.data('type');
+            $status.text('Memproses item ' + (idx + 1) + ' dari ' + $items.length + '...');
+
+            $.post(ajaxurl, {
+                action: 'apcai_auto_resolve_keyword_conflict',
+                nonce: nonce,
+                id: id,
+                type: type,
+            }, function (res) {
+                if (res.success && res.data) {
+                    $btnItem.removeClass('apcai-btn-primary').addClass('apcai-btn-secondary').text('✅ ' + res.data.keyword);
+                }
+                idx++;
+                setTimeout(processNext, 120);
+            }).fail(function () {
+                idx++;
+                setTimeout(processNext, 120);
+            });
+        }
+
+        processNext();
     });
 });

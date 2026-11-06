@@ -554,6 +554,12 @@
 
                 <div id="duplicate-kw-results" style="display:none;margin-top:16px;">
                     <div id="duplicate-kw-summary" style="padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px;"></div>
+                    <div id="duplicate-kw-actions" style="display:none;margin-bottom:12px;">
+                        <button type="button" id="btn-resolve-all-conflicts" class="apcai-btn apcai-btn-primary" style="padding:7px 16px;font-size:12px;">
+                            ⚡ <?php echo esc_html(APCAI_I18n::t('Diferensiasi Otomatis Semua Konflik (Berdasarkan Judul)', 'Auto-Resolve All Conflicts (Based on Titles)')); ?>
+                        </button>
+                        <span id="resolve-all-status" style="font-size:12px;color:#64748b;margin-left:10px;"></span>
+                    </div>
                     <div id="duplicate-kw-table-wrapper" style="max-height:360px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;background:#fff;">
                         <table class="apcai-table" style="width:100%;margin:0;">
                             <thead>

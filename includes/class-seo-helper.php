@@ -219,25 +219,54 @@ class APCAI_SEO_Helper {
 
         // Levenshtein / similar_text ratio
         similar_text($kw1, $kw2, $sim_percent);
-        $lev_ratio = $sim_percent / 100.0;
+        $lev_ratio = min(1.0, max(0.0, (float) $sim_percent / 100.0));
 
-        return max($jaccard, $lev_ratio);
+        return min(1.0, max(0.0, (float) max($jaccard, $lev_ratio)));
+    }
+
+    /**
+     * Ekstrak Frasa Kunci Spesifik dari Judul Konten (2-5 kata bernilai SEO tinggi)
+     */
+    public static function extract_focus_keyword_from_title(string $title): string {
+        $title = trim($title);
+        if (empty($title)) {
+            return '';
+        }
+
+        // Potong delimiter judul umum: `:`, `|`, `-`, `–`, `—`
+        $clean = preg_replace('/[|\-–—:]+.*$/u', '', $title);
+        $clean = trim(preg_replace('/\s+/', ' ', $clean));
+
+        $words = array_values(array_filter(explode(' ', $clean)));
+        if (count($words) < 2) {
+            $clean_all = preg_replace('/[|\-–—:]+/u', ' ', $title);
+            $words = array_values(array_filter(explode(' ', trim(preg_replace('/\s+/', ' ', $clean_all)))));
+        }
+
+        // Ambil 2-5 kata utama yang mewakili subjek spesifik
+        if (count($words) > 5) {
+            $words = array_slice($words, 0, 5);
+        }
+
+        return trim(implode(' ', $words));
     }
 
     /**
      * Resolusi Anti-Kanibalisasi Post vs Tag Keyword:
-     * Jika keyword post mirip/bentrok dengan salah satu tag (atau sebaliknya):
      * - Tag = Broad / Topic Hub / MOFU Curated ("Kumpulan Solusi", "Direktori", "Hub")
      * - Post = Specific Long-Tail / Intent-Driven ("Cara Memilih...", "Tips...", "Langkah...")
      * Menghasilkan keyword unik tanpa kanibalisasi internal.
      */
     public static function resolve_cannibalization(string $candidate_kw, string $type = 'post', int $current_id = 0, string $lang = 'id', string $title = ''): string {
         $candidate_kw = trim($candidate_kw);
+        if (empty($candidate_kw) && !empty($title)) {
+            $candidate_kw = self::extract_focus_keyword_from_title($title);
+        }
         if (empty($candidate_kw)) {
             return $candidate_kw;
         }
 
-        // 1. Dapatkan daftar keyword aktif di kubu lawan
+        // 1. Dapatkan daftar keyword aktif (Cek Post sesama Post, Tag, dan Pages)
         $opponents = [];
         if ($type === 'post') {
             // Cek terhadap semua tags di database
@@ -256,8 +285,27 @@ class APCAI_SEO_Helper {
                     ];
                 }
             }
+
+            // CRITICAL: Cek juga terhadap sesama POST lain yang sudah ada agar tidak kembar sesama artikel!
+            $other_posts = get_posts([
+                'post_type'      => 'post',
+                'post_status'    => 'publish',
+                'posts_per_page' => 150,
+                'exclude'        => [$current_id],
+                'fields'         => 'ids',
+            ]);
+            foreach ($other_posts as $other_id) {
+                $p_kw = self::get_post_focus_keyword($other_id);
+                if (!empty($p_kw)) {
+                    $opponents[] = [
+                        'id'   => $other_id,
+                        'name' => get_the_title($other_id),
+                        'kw'   => $p_kw,
+                    ];
+                }
+            }
         } else {
-            // Tipe tag: cek terhadap recent post keywords
+            // Tipe tag: cek terhadap recent post keywords dan tag lainnya
             $recent_posts = get_posts([
                 'post_type'      => 'post',
                 'post_status'    => 'publish',
@@ -265,7 +313,6 @@ class APCAI_SEO_Helper {
                 'fields'         => 'ids',
             ]);
             foreach ($recent_posts as $p_id) {
-                if ($p_id === $current_id) continue;
                 $p_kw = self::get_post_focus_keyword($p_id);
                 if (!empty($p_kw)) {
                     $opponents[] = [
@@ -296,39 +343,91 @@ class APCAI_SEO_Helper {
         // 3. Diferensiasi Intensional (Long-tail vs Hub)
         if ($type === 'post') {
             // Post butuh frasa aksi / spesifik / long-tail intent
-            // Jika ada judul artikel, ambil modifier spesifik dari judul
+            // Jika ada judul artikel, prioritaskan ekstraksi kata kunci spesifik dari judul
             if (!empty($title)) {
-                $clean_t = preg_replace('/[|\-–—:]+.*$/', '', $title);
-                $title_words = array_filter(explode(' ', trim($clean_t)));
-                if (count($title_words) >= 3) {
-                    $long_tail = implode(' ', array_slice($title_words, 0, 5));
-                    if (self::calculate_keyword_similarity($long_tail, $conflicting_kw) < 0.75) {
-                        return $long_tail;
+                $title_kw = self::extract_focus_keyword_from_title($title);
+                if (!empty($title_kw)) {
+                    $conflicts_title = false;
+                    foreach ($opponents as $opp) {
+                        if (self::calculate_keyword_similarity($title_kw, $opp['kw']) >= 0.70) {
+                            $conflicts_title = true;
+                            break;
+                        }
+                    }
+                    if (!$conflicts_title) {
+                        return $title_kw;
+                    }
+
+                    // Coba kombinasikan frasa judul dengan modifier intensi
+                    $clean_words = array_values(array_filter(explode(' ', $title_kw)));
+                    if (count($clean_words) >= 2) {
+                        $short_title = implode(' ', array_slice($clean_words, 0, 3));
+                        $test_title_pfx = ($lang === 'en') ? "Guide to {$short_title}" : "Panduan {$short_title}";
+                        $conflicts_cand = false;
+                        foreach ($opponents as $opp) {
+                            if (self::calculate_keyword_similarity($test_title_pfx, $opp['kw']) >= 0.70) {
+                                $conflicts_cand = true;
+                                break;
+                            }
+                        }
+                        if (!$conflicts_cand) {
+                            return $test_title_pfx;
+                        }
                     }
                 }
             }
 
             // Fallback modifier long-tail intent per bahasa
             if ($lang === 'en') {
-                $prefixes = ['How to Choose', 'Complete Review of', 'Best Tips for', 'Practical Steps for'];
+                $prefixes = ['How to Choose', 'Complete Review of', 'Best Tips for', 'Practical Steps for', 'Guide to'];
             } elseif ($lang === 'ms') {
-                $prefixes = ['Cara Memilih', 'Ulasan Penuh', 'Tips Terbaik', 'Langkah'];
+                $prefixes = ['Cara Memilih', 'Ulasan Penuh', 'Tips Terbaik', 'Langkah Mudah', 'Panduan'];
             } else {
-                $prefixes = ['Cara Memilih', 'Tips Terbaik', 'Langkah Mudah', 'Rekomendasi'];
+                $prefixes = ['Cara Memilih', 'Tips Terbaik', 'Langkah Mudah', 'Rekomendasi', 'Panduan'];
             }
-            $pfx = $prefixes[array_rand($prefixes)];
-            return "{$pfx} {$candidate_kw}";
+
+            shuffle($prefixes);
+            foreach ($prefixes as $pfx) {
+                $test_candidate = "{$pfx} {$candidate_kw}";
+                $still_conflicts = false;
+                foreach ($opponents as $opp) {
+                    if (self::calculate_keyword_similarity($test_candidate, $opp['kw']) >= 0.70) {
+                        $still_conflicts = true;
+                        break;
+                    }
+                }
+                if (!$still_conflicts) {
+                    return $test_candidate;
+                }
+            }
+
+            return $prefixes[0] . ' ' . $candidate_kw;
         } else {
             // Tag butuh frasa payung / agregator / topic cluster
             if ($lang === 'en') {
-                $suffixes = ['Hub & Guide', 'Topic Overview', 'Curated Directory', 'Solutions'];
+                $suffixes = ['Hub & Guide', 'Topic Overview', 'Curated Directory', 'Solutions', 'Series'];
             } elseif ($lang === 'ms') {
-                $suffixes = ['Koleksi & Panduan', 'Direktori Topik', 'Pusat Maklumat'];
+                $suffixes = ['Koleksi & Panduan', 'Direktori Topik', 'Pusat Maklumat', 'Kompilasi'];
             } else {
-                $suffixes = ['Pusat Informasi', 'Koleksi Topik', 'Direktori Pilihan'];
+                $suffixes = ['Pusat Informasi', 'Koleksi Topik', 'Direktori Pilihan', 'Kompilasi'];
             }
-            $sfx = $suffixes[array_rand($suffixes)];
-            return "{$candidate_kw} {$sfx}";
+
+            shuffle($suffixes);
+            foreach ($suffixes as $sfx) {
+                $test_tag = "{$candidate_kw} {$sfx}";
+                $still_conflicts = false;
+                foreach ($opponents as $opp) {
+                    if (self::calculate_keyword_similarity($test_tag, $opp['kw']) >= 0.70) {
+                        $still_conflicts = true;
+                        break;
+                    }
+                }
+                if (!$still_conflicts) {
+                    return $test_tag;
+                }
+            }
+
+            return $candidate_kw . ' ' . $suffixes[0];
         }
     }
 
