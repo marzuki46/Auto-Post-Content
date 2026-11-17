@@ -4,11 +4,6 @@ defined('ABSPATH') || exit;
 $stats = APCAI_Tag_Manager::get_tags_stats();
 $settings = get_option('apcai_settings', []);
 $tag_schedule_enabled = !empty($settings['tag_schedule_enabled']);
-$all_tags = get_terms([
-    'taxonomy'   => 'post_tag',
-    'hide_empty' => false,
-    'number'     => 100,
-]);
 ?>
 <div class="wrap apcai-wrap">
     <div class="apcai-header">
@@ -30,7 +25,7 @@ $all_tags = get_terms([
     </div>
 
     <!-- 1. Stats Counter Cards -->
-    <div style="display:grid;grid-template-columns: repeat(3, 1fr);gap:18px;margin-bottom:24px;">
+    <div style="display:grid;grid-template-columns: repeat(4, 1fr);gap:18px;margin-bottom:24px;">
         <div class="apcai-card" style="padding:18px 20px;display:flex;align-items:center;gap:16px;">
             <div style="width:48px;height:48px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:24px;">
                 🏷️
@@ -60,9 +55,91 @@ $all_tags = get_terms([
                 <div style="font-size:12px;color:#64748b;"><?php echo esc_html(APCAI_I18n::t('Tag Kosong (Perlu Dibuat)', 'Empty Tags (Pending AI)')); ?></div>
             </div>
         </div>
+
+        <div class="apcai-card" style="padding:18px 20px;display:flex;align-items:center;gap:16px;border-top:3px solid #ef4444;">
+            <div style="width:48px;height:48px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:24px;">
+                🛡️
+            </div>
+            <div>
+                <div style="font-size:24px;font-weight:700;color:#ef4444;" id="stat-deleted-redirects"><?php echo esc_html(count(get_option('apcai_deleted_tag_redirects', []))); ?></div>
+                <div style="font-size:12px;color:#64748b;"><?php echo esc_html(APCAI_I18n::t('Tag Terhapus (Auto 301 ke Home)', 'Deleted Tags (Auto 301 to Home)')); ?></div>
+            </div>
+        </div>
     </div>
 
-    <!-- 2. Bulk Generator & Scheduler Settings Card -->
+    <!-- 2. AI Tag Health Auditor & Cleaner Card -->
+    <div class="apcai-card" style="margin-bottom:24px;border-top:4px solid #ef4444;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+            <div>
+                <h2 style="margin:0;color:#0f172a;display:flex;align-items:center;gap:8px;">
+                    🧹 <?php echo esc_html(APCAI_I18n::t('AI Tag Health Auditor & Cleaner (Max 400 Tag Policy)', 'AI Tag Health Auditor & Cleaner (Max 400 Tag Policy)')); ?>
+                </h2>
+                <p style="color:var(--apcai-slate-500);font-size:13px;margin:4px 0 0 0;">
+                    <?php echo esc_html(APCAI_I18n::t(
+                        'Pindai seluruh tag di web Anda. AI mengevaluasi kesesuaian profil bisnis/niche Anda, mendeteksi tag 0 post (zombie), tag long-tail terlalu panjang (>3 kata), serta tag sampah/rusak. Tag yang dihapus otomatis dialihkan (301 Redirect) ke Homepage agar reputasi SEO tetap aman.',
+                        'Scan all tags across your site. AI analyzes relevance with your website profile, catches zero-post zombie tags, long-tail sentence spam (>3 words), and broken tags. Deleted tags are permanently 301-redirected to Homepage.'
+                    )); ?>
+                </p>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button type="button" id="btn-start-tag-audit" class="apcai-btn apcai-btn-primary" style="padding:10px 20px;font-size:13px;background:#ef4444;">
+                    🔍 <?php echo esc_html(APCAI_I18n::t('Mulai Analisa AI & Audit Tag', 'Run AI Tag Health Audit')); ?>
+                </button>
+            </div>
+        </div>
+
+        <!-- Audit Progress Status -->
+        <div id="tag-audit-progress-box" style="display:none;margin-top:14px;background:#f8fafc;border:1px solid #e2e8f0;padding:14px 18px;border-radius:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#0f172a;margin-bottom:8px;">
+                <span id="tag-audit-status-text">Memindai tag dengan AI...</span>
+                <span id="tag-audit-percent-text" style="font-weight:700;color:#ef4444;">0%</span>
+            </div>
+            <div style="background:#e2e8f0;border-radius:20px;height:10px;overflow:hidden;">
+                <div id="tag-audit-progress-bar" style="background:linear-gradient(90deg, #f87171, #ef4444);height:100%;width:0%;transition:width 0.3s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Candidates Container & Action Bar -->
+        <div id="tag-candidates-container" style="display:none;margin-top:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:#fff1f2;border:1px solid #fecdd3;padding:12px 18px;border-radius:8px;margin-bottom:14px;">
+                <div>
+                    <strong style="color:#9f1239;font-size:14px;">
+                        ⚠️ <span id="candidate-count-text">0</span> Tag Masuk Kandidat Hapus
+                    </strong>
+                    <div style="font-size:12px;color:#be123c;margin-top:2px;">
+                        Tag di bawah dinilai tidak sehat untuk SEO (0 post, format kalimat panjang, atau melenceng dari profil website).
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <label style="font-size:12px;color:#475569;display:flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="checkbox" id="check-all-candidates" checked> Pilih Semua
+                    </label>
+                    <button type="button" id="btn-delete-selected-candidates" class="apcai-btn apcai-btn-danger" style="padding:8px 18px;font-size:13px;">
+                        🗑️ <?php echo esc_html(APCAI_I18n::t('Hapus Tag Terpilih & Buat 301 ke Home', 'Delete Selected & 301 to Home')); ?>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Table Candidates -->
+            <div style="max-height:420px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff;">
+                <table class="apcai-table" style="width:100%;margin:0;">
+                    <thead>
+                        <tr style="position:sticky;top:0;background:#f8fafc;z-index:2;">
+                            <th style="width:40px;text-align:center;"><input type="checkbox" id="master-candidate-check" checked></th>
+                            <th>Nama Tag</th>
+                            <th>Panjang Kata</th>
+                            <th>Jumlah Artikel</th>
+                            <th>Alasan Rekomendasi Hapus</th>
+                            <th style="text-align:right;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tag-candidates-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Bulk Generator & Scheduler Settings Card -->
     <div class="apcai-card" style="margin-bottom:24px;">
         <h2><?php echo esc_html(APCAI_I18n::t('Auto-Grab & Bulk Tag Generator', 'Auto-Grab & Bulk Tag Generator')); ?></h2>
         <p style="color:var(--apcai-slate-500);font-size:13px;margin-top:-6px;margin-bottom:16px;">
@@ -172,85 +249,56 @@ $all_tags = get_terms([
         </div>
     </div>
 
-    <!-- 3. Daftar Tag Table -->
+    <!-- 4. Daftar Tag Table (With Real-Time Search & Pagination) -->
     <div class="apcai-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <h2 style="margin:0;"><?php echo esc_html(APCAI_I18n::t('Daftar Tag & Status Copywriting', 'Tags List & Copywriting Status')); ?></h2>
-            <div style="display:flex;gap:8px;">
-                <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-tags active" data-filter="all" style="padding:4px 10px;font-size:12px;">Semua (<?php echo esc_html($stats['total']); ?>)</button>
-                <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-tags" data-filter="empty" style="padding:4px 10px;font-size:12px;">Kosong Saja (<?php echo esc_html($stats['empty']); ?>)</button>
-                <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-tags" data-filter="filled" style="padding:4px 10px;font-size:12px;">Sudah Ada (<?php echo esc_html($stats['filled']); ?>)</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+            <div>
+                <h2 style="margin:0;"><?php echo esc_html(APCAI_I18n::t('Daftar Tag & Status Copywriting', 'Tags List & Copywriting Status')); ?></h2>
+                <div style="font-size:12px;color:#64748b;margin-top:2px;">
+                    Mendukung navigasi 1000+ tag dengan cepat & tanpa membuat server berat.
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <input type="text" id="tag-search-input" class="apcai-input" placeholder="Cari nama tag..." style="padding:6px 12px;font-size:12px;width:180px;">
+                <div style="display:flex;gap:6px;">
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-tags active" data-filter="all" style="padding:4px 10px;font-size:12px;">Semua</button>
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-tags" data-filter="empty" style="padding:4px 10px;font-size:12px;">Kosong Saja</button>
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-tags" data-filter="filled" style="padding:4px 10px;font-size:12px;">Sudah Ada</button>
+                </div>
             </div>
         </div>
 
-        <table class="apcai-table" id="table-apcai-tags">
-            <thead>
-                <tr>
-                    <th>Tag (Title Case)</th>
-                    <th>Jumlah Post</th>
-                    <th>Status Copywriting</th>
-                    <th>Frasa Kunci Yoast</th>
-                    <th style="text-align:right;">Aksi</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($all_tags) || is_wp_error($all_tags)): ?>
+        <div style="overflow-x:auto;">
+            <table class="apcai-table" id="table-apcai-tags" style="width:100%;">
+                <thead>
                     <tr>
-                        <td colspan="5" style="text-align:center;padding:40px 20px;color:#94a3b8;">
-                            <?php echo esc_html(APCAI_I18n::t('Belum ada tag yang terdaftar di WordPress Anda.', 'No tags found in your WordPress site.')); ?>
+                        <th>Tag (Title Case)</th>
+                        <th>Jumlah Post</th>
+                        <th>Status Copywriting</th>
+                        <th>Frasa Kunci Yoast</th>
+                        <th style="text-align:right;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tags-table-body">
+                    <tr>
+                        <td colspan="5" style="text-align:center;padding:30px 20px;color:#64748b;">
+                            <span class="apcai-spinner"></span> Memuat data tag...
                         </td>
                     </tr>
-                <?php else: ?>
-                    <?php foreach ($all_tags as $t):
-                        $content = get_term_meta($t->term_id, '_apcai_tag_copywriting', true);
-                        $has_content = !empty(trim($content));
-                        $words = $has_content ? str_word_count(strip_tags($content)) : 0;
-                        $t_lang = strtoupper(get_term_meta($t->term_id, '_apcai_tag_lang', true) ?: 'ID');
-                        $t_funnel = strtoupper(get_term_meta($t->term_id, '_apcai_tag_funnel', true) ?: 'MOFU');
-                        $yoast_kw = (class_exists('APCAI_SEO_Helper') ? APCAI_SEO_Helper::get_term_focus_keyword($t->term_id, 'post_tag') : '') ?: $t->name;
-                        $tag_link = get_term_link($t);
-                    ?>
-                        <tr class="tag-row" data-status="<?php echo $has_content ? 'filled' : 'empty'; ?>" id="tag-row-<?php echo esc_attr($t->term_id); ?>">
-                            <td>
-                                <strong style="color:#0f172a;font-size:14px;"><?php echo esc_html($t->name); ?></strong>
-                                <div style="font-size:11px;color:#64748b;">slug: <code><?php echo esc_html($t->slug); ?></code></div>
-                            </td>
-                            <td>
-                                <span class="apcai-badge apcai-badge-blue"><?php echo esc_html($t->count); ?> Artikel</span>
-                            </td>
-                            <td class="tag-status-cell">
-                                <?php if ($has_content): ?>
-                                    <span class="apcai-badge apcai-badge-green">
-                                        ✅ Aktif (<?php echo esc_html($words); ?> kata • <?php echo esc_html($t_lang); ?> • <?php echo esc_html($t_funnel); ?>)
-                                    </span>
-                                <?php else: ?>
-                                    <span class="apcai-badge apcai-badge-amber">
-                                        ⚠️ Belum Ada Konten
-                                    </span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <code style="font-size:12px;background:#f1f5f9;padding:2px 6px;border-radius:4px;"><?php echo esc_html($yoast_kw); ?></code>
-                            </td>
-                            <td style="text-align:right;">
-                                <div style="display:inline-flex;gap:6px;">
-                                    <button type="button" class="apcai-btn apcai-btn-secondary btn-quick-gen-tag" data-id="<?php echo esc_attr($t->term_id); ?>" data-name="<?php echo esc_attr($t->name); ?>" style="padding:4px 10px;font-size:11px;">
-                                        ⚡ <?php echo $has_content ? 'Tulis Ulang' : 'Tulis AI'; ?>
-                                    </button>
-                                    <a href="<?php echo esc_url(get_edit_term_link($t->term_id, 'post_tag')); ?>" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:4px 8px;font-size:11px;" title="Edit di WordPress">
-                                        ✏️
-                                    </a>
-                                    <?php if (!is_wp_error($tag_link)): ?>
-                                        <a href="<?php echo esc_url($tag_link); ?>" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:4px 8px;font-size:11px;" title="Lihat di Web">
-                                            👁️
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid #e2e8f0;">
+            <div style="font-size:12px;color:#64748b;" id="tag-pagination-info">
+                Menampilkan 0 tag
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;" id="tag-pagination-buttons">
+                <button type="button" id="btn-prev-tag-page" class="apcai-btn apcai-btn-secondary" style="padding:4px 10px;font-size:12px;" disabled>&larr; Sebelumnya</button>
+                <span id="tag-current-page-text" style="font-size:12px;font-weight:600;padding:0 6px;">Hal 1 / 1</span>
+                <button type="button" id="btn-next-tag-page" class="apcai-btn apcai-btn-secondary" style="padding:4px 10px;font-size:12px;" disabled>Berikutnya &rarr;</button>
+            </div>
+        </div>
     </div>
 </div>

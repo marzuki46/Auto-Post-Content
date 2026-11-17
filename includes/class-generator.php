@@ -1306,8 +1306,48 @@ Format Output WAJIB JSON murni:
                 }
                 $safe_broad_tags[] = $t_clean;
             }
+
+            // Kebijakan Cerdas Batas Tag & Reuse Tag Existing (Maksimal 400 Tag di Database)
             if (!empty($safe_broad_tags)) {
-                wp_set_post_tags($post_id, array_unique($safe_broad_tags), true);
+                $total_existing_tags_count = wp_count_terms(['taxonomy' => 'post_tag', 'hide_empty' => false]);
+                if (is_wp_error($total_existing_tags_count)) {
+                    $total_existing_tags_count = 0;
+                }
+
+                // Jika total tag sudah >= 400, prioritaskan HANYA memakai tag yang sudah ada
+                if ($total_existing_tags_count >= 400) {
+                    $reusable_tags = [];
+                    foreach ($safe_broad_tags as $cand) {
+                        $existing_term = get_term_by('name', $cand, 'post_tag');
+                        if ($existing_term) {
+                            $reusable_tags[] = $existing_term->name;
+                        }
+                    }
+                    // Jika tidak ada yang cocok sama sekali, cari tag existing yang paling relevan (substring match)
+                    if (empty($reusable_tags)) {
+                        $recent_all_tags = get_terms([
+                            'taxonomy'   => 'post_tag',
+                            'hide_empty' => false,
+                            'number'     => 100,
+                            'orderby'    => 'count',
+                            'order'      => 'DESC',
+                        ]);
+                        if (!empty($recent_all_tags) && !is_wp_error($recent_all_tags)) {
+                            foreach ($recent_all_tags as $ext_tag) {
+                                if (stripos($title, $ext_tag->name) !== false || (!empty($focus_kw) && stripos($ext_tag->name, $focus_kw) !== false)) {
+                                    $reusable_tags[] = $ext_tag->name;
+                                    if (count($reusable_tags) >= 3) break;
+                                }
+                            }
+                        }
+                    }
+                    if (!empty($reusable_tags)) {
+                        wp_set_post_tags($post_id, array_unique($reusable_tags), true);
+                    }
+                } else {
+                    // Di bawah 400 tag: bisa tambahkan tag broad baru
+                    wp_set_post_tags($post_id, array_unique($safe_broad_tags), true);
+                }
             }
         }
 

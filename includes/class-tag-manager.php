@@ -8,6 +8,9 @@ class APCAI_Tag_Manager {
         add_action('loop_end', [__CLASS__, 'render_tag_content_below_posts']);
         add_shortcode('apcai_tag_content', [__CLASS__, 'shortcode_tag_content']);
 
+        // Frontend 301 Redirect untuk Tag yang telah dihapus
+        add_action('template_redirect', [__CLASS__, 'handle_deleted_tag_redirect']);
+
         // Admin Hooks: Tambahkan form generator di edit tag native WordPress (Posts -> Tags)
         if (is_admin()) {
             add_action('post_tag_edit_form_fields', [__CLASS__, 'render_tag_edit_fields'], 10, 2);
@@ -22,6 +25,11 @@ class APCAI_Tag_Manager {
             add_action('wp_ajax_apcai_get_empty_tags', [__CLASS__, 'ajax_get_empty_tags']);
             add_action('wp_ajax_apcai_batch_generate_single_tag', [__CLASS__, 'ajax_batch_generate_single_tag']);
             add_action('wp_ajax_apcai_toggle_tag_schedule', [__CLASS__, 'ajax_toggle_tag_schedule']);
+
+            // Tag Audit & Cleanup AJAX
+            add_action('wp_ajax_apcai_load_tags_paged', [__CLASS__, 'ajax_load_tags_paged']);
+            add_action('wp_ajax_apcai_analyze_tags_with_ai', [__CLASS__, 'ajax_analyze_tags_with_ai']);
+            add_action('wp_ajax_apcai_bulk_delete_tags', [__CLASS__, 'ajax_bulk_delete_tags']);
         }
     }
 
@@ -746,5 +754,365 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
 
         // Eksekusi tepat 1 copywriting tag
         self::cron_step_tag_generator();
+    }
+
+    /**
+     * Frontend 301 Redirect untuk Tag yang telah dihapus
+     */
+    public static function handle_deleted_tag_redirect() {
+        if (!is_404() && !is_tag()) {
+            return;
+        }
+
+        $req_uri = $_SERVER['REQUEST_URI'] ?? '';
+        if (empty($req_uri)) {
+            return;
+        }
+
+        // Ambil daftar slug/path tag yang pernah dihapus
+        $deleted_redirects = get_option('apcai_deleted_tag_redirects', []);
+        if (empty($deleted_redirects) || !is_array($deleted_redirects)) {
+            // Jika 404 pada URL berpola /tag/, redirect juga ke home agar bersih
+            if (is_404() && preg_match('#/tag/([^/?]+)#i', $req_uri)) {
+                wp_safe_redirect(home_url('/'), 301);
+                exit;
+            }
+            return;
+        }
+
+        $clean_uri = trim(parse_url($req_uri, PHP_URL_PATH), '/');
+        foreach ($deleted_redirects as $slug => $target) {
+            if (str_contains($clean_uri, $slug)) {
+                wp_safe_redirect(home_url('/'), 301);
+                exit;
+            }
+        }
+
+        if (is_404() && preg_match('#/tag/([^/?]+)#i', $req_uri)) {
+            wp_safe_redirect(home_url('/'), 301);
+            exit;
+        }
+    }
+
+    /**
+     * AJAX: Memuat data tag dengan Pagination & Pencarian (Solusi 1000+ tag)
+     */
+    public static function ajax_load_tags_paged() {
+        check_ajax_referer('apcai_tag_nonce', 'nonce');
+        if (!current_user_can('manage_categories')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $page     = max(1, absint($_POST['page'] ?? 1));
+        $per_page = max(10, min(200, absint($_POST['per_page'] ?? 50)));
+        $search   = sanitize_text_field(wp_unslash($_POST['search'] ?? ''));
+        $filter   = sanitize_text_field(wp_unslash($_POST['filter'] ?? 'all'));
+        $offset   = ($page - 1) * $per_page;
+
+        $args = [
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+            'number'     => $per_page,
+            'offset'     => $offset,
+            'orderby'    => 'count',
+            'order'      => 'DESC',
+        ];
+
+        if (!empty($search)) {
+            $args['search'] = $search;
+        }
+
+        $terms = get_terms($args);
+        $total_terms = wp_count_terms([
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+            'search'     => !empty($search) ? $search : '',
+        ]);
+        if (is_wp_error($total_terms)) {
+            $total_terms = 0;
+        }
+
+        $items = [];
+        if (!empty($terms) && !is_wp_error($terms)) {
+            foreach ($terms as $t) {
+                $content = get_term_meta($t->term_id, '_apcai_tag_copywriting', true);
+                $has_content = !empty(trim($content));
+                $words = $has_content ? str_word_count(strip_tags($content)) : 0;
+                $t_lang = strtoupper(get_term_meta($t->term_id, '_apcai_tag_lang', true) ?: 'ID');
+                $t_funnel = strtoupper(get_term_meta($t->term_id, '_apcai_tag_funnel', true) ?: 'MOFU');
+                $yoast_kw = (class_exists('APCAI_SEO_Helper') ? APCAI_SEO_Helper::get_term_focus_keyword($t->term_id, 'post_tag') : '') ?: $t->name;
+                $tag_link = get_term_link($t);
+
+                if ($filter === 'empty' && $has_content) continue;
+                if ($filter === 'filled' && !$has_content) continue;
+
+                $items[] = [
+                    'id'          => $t->term_id,
+                    'name'        => $t->name,
+                    'slug'        => $t->slug,
+                    'count'       => $t->count,
+                    'has_content' => $has_content,
+                    'words'       => $words,
+                    'lang'        => $t_lang,
+                    'funnel'      => $t_funnel,
+                    'yoast_kw'    => $yoast_kw,
+                    'edit_url'    => get_edit_term_link($t->term_id, 'post_tag'),
+                    'view_url'    => (!is_wp_error($tag_link)) ? $tag_link : '',
+                ];
+            }
+        }
+
+        wp_send_json_success([
+            'items'        => $items,
+            'total'        => (int)$total_terms,
+            'page'         => $page,
+            'per_page'     => $per_page,
+            'total_pages'  => ceil($total_terms / $per_page),
+        ]);
+    }
+
+    /**
+     * AJAX: Analisa Tag oleh AI & Rules SEO (Deteksi Kandidat Hapus)
+     */
+    public static function ajax_analyze_tags_with_ai() {
+        check_ajax_referer('apcai_tag_nonce', 'nonce');
+        if (!current_user_can('manage_categories')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $settings = get_option('apcai_settings', []);
+        $site_name   = $settings['site_name'] ?? get_bloginfo('name');
+        $niche       = $settings['niche'] ?? '';
+        $audience    = $settings['audience'] ?? '';
+        $brand_voice = $settings['brand_voice'] ?? '';
+        $knowledge   = $settings['knowledge_data'] ?? '';
+
+        // Ambil batch tag (maksimal 150 tag per klik audit untuk ketepatan token & respon cepat)
+        $offset = absint($_POST['offset'] ?? 0);
+        $limit  = 120;
+
+        $terms = get_terms([
+            'taxonomy'   => 'post_tag',
+            'hide_empty' => false,
+            'number'     => $limit,
+            'offset'     => $offset,
+            'orderby'    => 'id',
+            'order'      => 'ASC',
+        ]);
+
+        $total_all_tags = wp_count_terms(['taxonomy' => 'post_tag', 'hide_empty' => false]);
+        if (is_wp_error($total_all_tags)) {
+            $total_all_tags = 0;
+        }
+
+        if (empty($terms) || is_wp_error($terms)) {
+            wp_send_json_success([
+                'candidates' => [],
+                'scanned'    => 0,
+                'offset'     => $offset,
+                'total_all'  => (int)$total_all_tags,
+                'is_done'    => true,
+            ]);
+        }
+
+        $candidates = [];
+        $unclear_for_ai = [];
+
+        // Tahap 1: Evaluasi Deterministic Rules SEO
+        foreach ($terms as $t) {
+            $words = array_values(array_filter(explode(' ', trim($t->name))));
+            $word_count = count($words);
+
+            // Kriteria 1: Zombie Tag (0 Post)
+            if ($t->count == 0) {
+                $candidates[] = [
+                    'id'          => $t->term_id,
+                    'name'        => $t->name,
+                    'slug'        => $t->slug,
+                    'count'       => $t->count,
+                    'word_count'  => $word_count,
+                    'reason_type' => 'zombie',
+                    'reason_text' => 'Zombie Tag (0 Post) - Halaman kosong thin-content berisiko de-index.',
+                    'action'      => 'delete',
+                ];
+                continue;
+            }
+
+            // Kriteria 2: Terlalu Panjang / Long-Tail Sentence (> 3 kata)
+            if ($word_count > 3) {
+                $candidates[] = [
+                    'id'          => $t->term_id,
+                    'name'        => $t->name,
+                    'slug'        => $t->slug,
+                    'count'       => $t->count,
+                    'word_count'  => $word_count,
+                    'reason_type' => 'longtail',
+                    'reason_text' => "Long-Tail Spam ({$word_count} kata) - Format kalimat panjang harusnya judul artikel, bukan tag.",
+                    'action'      => 'delete',
+                ];
+                continue;
+            }
+
+            // Kriteria 3: Karakter Spam / Rusak / Angka Acak
+            if (preg_match('/[<>{}\[\]\^\*\$#@!~%]/', $t->name) || is_numeric($t->name)) {
+                $candidates[] = [
+                    'id'          => $t->term_id,
+                    'name'        => $t->name,
+                    'slug'        => $t->slug,
+                    'count'       => $t->count,
+                    'word_count'  => $word_count,
+                    'reason_type' => 'garbage',
+                    'reason_text' => 'Karakter Rusak / Simbol Acak - Terindikasi tag spam / error scraping.',
+                    'action'      => 'delete',
+                ];
+                continue;
+            }
+
+            // Tag pendek yang lolos rules awal dikumpulkan untuk dicek relevansi topiknya oleh AI
+            $unclear_for_ai[] = [
+                'id'    => $t->term_id,
+                'name'  => $t->name,
+                'slug'  => $t->slug,
+                'count' => $t->count,
+            ];
+        }
+
+        // Tahap 2: AI Evaluation untuk Relevansi Niche & Topical Authority
+        if (!empty($unclear_for_ai)) {
+            $tag_sample_list = [];
+            foreach ($unclear_for_ai as $item) {
+                $tag_sample_list[] = "ID:{$item['id']}|Name:{$item['name']}|Posts:{$item['count']}";
+            }
+
+            $ai_prompt_system = "Anda adalah Lead SEO Auditor & Topical Authority Architect profesional.
+Tugas Anda mengevaluasi daftar tag WordPress berdasarkan profil identitas website:
+- Nama Situs: {$site_name}
+- Niche Utama: {$niche}
+- Target Audiens: {$audience}
+- Brand Voice: {$brand_voice}
+- Basis Pengetahuan Bisnis: " . substr($knowledge, 0, 1000) . "
+
+KRITERIA KANDIDAT HAPUS:
+1. Tidak relevan sama sekali dengan Niche & Profil Bisnis di atas (Out of Niche).
+2. Tag dengan 1 post yang topiknya terlalu sempit / tidak layak jadi payung kategori topik.
+3. Istilah asing/melenceng yang membingungkan relevansi Google terhadap website ini.
+
+Balas HANYA dalam format JSON array yang memuat tag yang TIDAK LAYAK disimpan (kandidat hapus). Struktur:
+[
+  {
+    \"id\": 123,
+    \"reason\": \"Out of Niche / Mismatch topik bisnis...\"
+  }
+]
+Jika semua tag di daftar layak dipertahankan, balas dengan array kosong: []";
+
+            $ai_prompt_user = "Berikut daftar tag yang perlu Anda evaluasi:\n" . implode("\n", $tag_sample_list);
+
+            $model = $settings['model_planner'] ?? 'gemini-2.5-flash';
+            $ai_res = APCAI_AI_Client::chat($ai_prompt_system, $ai_prompt_user, $model, 0.2);
+
+            if (!is_wp_error($ai_res)) {
+                $clean_json = preg_replace('/```json\s*|\s*```/', '', trim($ai_res));
+                $parsed = json_decode($clean_json, true);
+                if (is_array($parsed)) {
+                    $ai_bad_map = [];
+                    foreach ($parsed as $p) {
+                        if (!empty($p['id'])) {
+                            $ai_bad_map[$p['id']] = $p['reason'] ?? 'Tidak relevan dengan profil niche website.';
+                        }
+                    }
+
+                    foreach ($unclear_for_ai as $u) {
+                        if (isset($ai_bad_map[$u['id']])) {
+                            $candidates[] = [
+                                'id'          => $u['id'],
+                                'name'        => $u['name'],
+                                'slug'        => $u['slug'],
+                                'count'       => $u['count'],
+                                'word_count'  => count(explode(' ', $u['name'])),
+                                'reason_type' => 'out_of_niche',
+                                'reason_text' => 'AI Review: ' . $ai_bad_map[$u['id']],
+                                'action'      => 'delete',
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        $scanned_count = count($terms);
+        $next_offset   = $offset + $scanned_count;
+        $is_done       = ($next_offset >= $total_all_tags) || ($scanned_count < $limit);
+
+        wp_send_json_success([
+            'candidates' => $candidates,
+            'scanned'    => $scanned_count,
+            'offset'     => $next_offset,
+            'total_all'  => (int)$total_all_tags,
+            'is_done'    => $is_done,
+        ]);
+    }
+
+    /**
+     * AJAX: Hapus Massal Tag Terpilih + Buat Redirect 301 ke Home
+     */
+    public static function ajax_bulk_delete_tags() {
+        check_ajax_referer('apcai_tag_nonce', 'nonce');
+        if (!current_user_can('manage_categories')) {
+            wp_send_json_error('Unauthorized');
+        }
+
+        $tag_ids = array_map('absint', (array)($_POST['tag_ids'] ?? []));
+        $tag_ids = array_filter($tag_ids);
+
+        if (empty($tag_ids)) {
+            wp_send_json_error('Tidak ada tag yang dipilih.');
+        }
+
+        $deleted_redirects = get_option('apcai_deleted_tag_redirects', []);
+        if (!is_array($deleted_redirects)) {
+            $deleted_redirects = [];
+        }
+
+        $deleted_count = 0;
+        $deleted_names = [];
+
+        foreach ($tag_ids as $id) {
+            $term = get_term($id, 'post_tag');
+            if ($term && !is_wp_error($term)) {
+                $slug = $term->slug;
+                $name = $term->name;
+
+                // Catat ke daftar redirect 301 ke Home
+                $deleted_redirects[$slug] = home_url('/');
+
+                // Hapus term secara permanen di database WordPress
+                $res = wp_delete_term($id, 'post_tag');
+                if ($res && !is_wp_error($res)) {
+                    $deleted_count++;
+                    $deleted_names[] = $name;
+                }
+            }
+        }
+
+        // Simpan database redirect
+        update_option('apcai_deleted_tag_redirects', $deleted_redirects);
+
+        // Catat ke Log Aktivitas
+        if ($deleted_count > 0) {
+            global $wpdb;
+            $table_logs = APCAI_DB::table_logs();
+            $wpdb->insert($table_logs, [
+                'action_type' => 'tag_cleanup',
+                'status'      => 'success',
+                'message'     => "AI Tag Cleaner: Dihapus {$deleted_count} tag tidak sehat/spam & otomatis di-redirect 301 ke Home. Tag contoh: " . implode(', ', array_slice($deleted_names, 0, 5)),
+                'created_at'  => current_time('mysql'),
+            ]);
+        }
+
+        wp_send_json_success([
+            'deleted_count' => $deleted_count,
+            'message'       => "Berhasil menghapus {$deleted_count} tag! Semua link bekas tag otomatis di-redirect 301 ke Homepage demi keamanan SEO.",
+        ]);
     }
 }
