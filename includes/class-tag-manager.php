@@ -205,6 +205,11 @@ class APCAI_Tag_Manager {
         if (isset($_POST['_apcai_tag_copywriting'])) {
             $content = self::enforce_single_h1(wp_unslash($_POST['_apcai_tag_copywriting']));
             update_term_meta($term_id, '_apcai_tag_copywriting', $content);
+
+            // Sinkronkan ke term description native WordPress agar Yoast SEO JavaScript Analyzer membaca teks & densitas keyword
+            wp_update_term($term_id, 'post_tag', [
+                'description' => $content,
+            ]);
         }
         if (isset($_POST['apcai_tag_lang'])) {
             update_term_meta($term_id, '_apcai_tag_lang', sanitize_text_field($_POST['apcai_tag_lang']));
@@ -308,13 +313,18 @@ ATURAN STRUKTUR & SEO HEADING PALING KETAT:
    - Posisi konten tag ini adalah intisari payung (overview kurasi), klasifikasi solusi, matriks evaluasi, dan pemandu navigasi pembaca menuju artikel-artikel spesifik di bawahnya.
 3. FUNNEL FOCUS:
    {$funnel_desc}
-4. TABEL DATA / KOMPARASI:
+4. INTEGRASI FOCUS KEYPHRASE SEO (WAJIB UNTUK SKOR HIJAU YOAST SEO):
+   - Frasa kunci target adalah: \"{$tag_name}\".
+   - PARAGRAF PERTAMA (INTRODUCTION): Anda WAJIB menyebutkan frasa kunci persis \"{$tag_name}\" di dalam 1-2 kalimat pertama paragraf pembuka (Keyphrase in introduction).
+   - DENSITAS KATA KUNCI (KEYPHRASE DENSITY): Sebutkan frasa kunci \"{$tag_name}\" secara alami sebanyak 2 hingga 4 kali di seluruh teks agar lolos analisis densitas Yoast SEO.
+   - HEADING DENGAN KATA KUNCI: Masukkan frasa \"{$tag_name}\" ke dalam minimal salah satu sub-heading ## (H2).
+5. TABEL DATA / KOMPARASI:
    Wajib sertakan minimal 1 tabel data Markdown yang rapi (| Kolom 1 | Kolom 2 |) yang membandingkan opsi, estimasi biaya, atau ringkasan solusi.
-5. ZERO ROBOTIC CLICHES:
+6. ZERO ROBOTIC CLICHES:
    - Dilarang membuka dengan kalimat klise: 'Di era digital saat ini...', 'Dalam artikel ini...', 'Tidak dapat dipungkiri bahwa...'. Mulai langsung dengan konteks nyata audiens.
    - Dilarang membuat sub-heading klise 'Kesimpulan' atau 'Penutup'. Gunakan sub-heading aksi nyata (Langkah Praktis / Nasihat Ahli).
    - Dilarang menggunakan garis pemisah mendatar (---, ***, ___).
-6. INTERNAL LINK & CALL TO ACTION:
+7. INTERNAL LINK & CALL TO ACTION:
    Sertakan link kontekstual ke Brand Resmi [{$site_name}]({$site_url}) dengan ajakan aksi (Call To Action) yang elegan di akhir tulisan.
 {$lang_strict_rule}
 
@@ -444,6 +454,11 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
             update_term_meta($tag_id, '_apcai_tag_length', $length);
             update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
 
+            // Sinkronkan ke term description native WordPress agar Yoast SEO membaca konten & keyphrase
+            wp_update_term($tag_id, 'post_tag', [
+                'description' => $res,
+            ]);
+
             // Auto input frasa kunci utama Yoast & Rank Math dengan resolusi anti-kanibalisasi
             $safe_tag_kw = APCAI_SEO_Helper::resolve_cannibalization($tag_name, 'tag', $tag_id, $lang);
             APCAI_SEO_Helper::set_term_focus_keyword($tag_id, $safe_tag_kw, 'post_tag');
@@ -510,6 +525,11 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($tag_id, '_apcai_tag_lang', $lang);
         update_term_meta($tag_id, '_apcai_tag_length', $length);
         update_term_meta($tag_id, '_apcai_tag_funnel', $funnel);
+
+        // Sinkronkan ke term description native WordPress agar Yoast SEO membaca konten & keyphrase
+        wp_update_term($tag_id, 'post_tag', [
+            'description' => $res,
+        ]);
 
         // Auto input ke frasa kunci Yoast SEO & Rank Math dengan resolusi anti-kanibalisasi
         $safe_tag_kw = APCAI_SEO_Helper::resolve_cannibalization($tag_name, 'tag', $tag_id, $lang);
@@ -641,6 +661,11 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         update_term_meta($target['id'], '_apcai_tag_lang', $lang);
         update_term_meta($target['id'], '_apcai_tag_length', $length);
         update_term_meta($target['id'], '_apcai_tag_funnel', $funnel);
+
+        // Sinkronkan ke term description native WordPress agar Yoast SEO membaca konten & keyphrase
+        wp_update_term($target['id'], 'post_tag', [
+            'description' => $res,
+        ]);
 
         // Auto input ke frasa kunci Yoast SEO & Rank Math dengan resolusi anti-kanibalisasi
         $safe_target_kw = APCAI_SEO_Helper::resolve_cannibalization($target['name'], 'tag', $target['id'], $lang);

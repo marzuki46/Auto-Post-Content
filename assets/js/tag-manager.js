@@ -650,7 +650,22 @@ jQuery(document).ready(function ($) {
                 $btn.html(originalText).prop('disabled', false);
                 if (res.success && res.data) {
                     $('#apcai_tag_copywriting').val(res.data.content);
-                    $status.html('<span style="color:#10b981;font-weight:600;">✅ Selesai! ' + res.data.word_count + ' kata tersimpan (Single H1 & Yoast focuskw terjamin).</span>');
+                    
+                    // Update juga textarea 'description' native WordPress jika ada di halaman
+                    const $desc = $('#description');
+                    if ($desc.length) {
+                        $desc.val(res.data.content);
+                        // Trigger event input & change agar library Yoast SEO realtime analyzer membaca konten langsung
+                        $desc.trigger('input').trigger('change');
+                    }
+
+                    // Update input focus keyphrase Yoast di layar jika ada
+                    const $yoastInput = $('input[name*="focuskw"], #yoast_wpseo_focuskw, input#focus-keyword-input-metabox');
+                    if ($yoastInput.length && !$yoastInput.val()) {
+                        $yoastInput.val(tagName).trigger('input').trigger('change');
+                    }
+
+                    $status.html('<span style="color:#10b981;font-weight:600;">✅ Selesai! ' + res.data.word_count + ' kata tersimpan ke Deskripsi WordPress & Yoast SEO.</span>');
                 } else {
                     $status.html('<span style="color:#ef4444;">❌ ' + (res.data || 'Gagal generate copywriting.') + '</span>');
                 }
