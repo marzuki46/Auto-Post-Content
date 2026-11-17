@@ -891,6 +891,14 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         $offset = absint($_POST['offset'] ?? 0);
         $limit  = 120;
 
+        // Opsi Filter Kriteria Audit dari UI
+        $filter_zombie    = !empty($_POST['crit_zombie']);
+        $filter_longtail  = !empty($_POST['crit_longtail']);
+        $filter_garbage   = !empty($_POST['crit_garbage']);
+        $filter_niche     = !empty($_POST['crit_niche']);
+        $protect_copy     = !empty($_POST['protect_copy']); // Proteksi tag yang sudah ada copywriting AI
+        $max_words_thresh = max(2, min(10, absint($_POST['max_words'] ?? 3)));
+
         $terms = get_terms([
             'taxonomy'   => 'post_tag',
             'hide_empty' => false,
@@ -920,16 +928,24 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
 
         // Tahap 1: Evaluasi Deterministic Rules SEO
         foreach ($terms as $t) {
+            $has_copywriting = !empty(trim((string)get_term_meta($t->term_id, '_apcai_tag_copywriting', true)));
+
+            // Proteksi Mutlak: Jangan sentuh tag yang sudah dibuatkan copywriting jika proteksi aktif
+            if ($protect_copy && $has_copywriting) {
+                continue;
+            }
+
             $words = array_values(array_filter(explode(' ', trim($t->name))));
             $word_count = count($words);
 
             // Kriteria 1: Zombie Tag (0 Post)
-            if ($t->count == 0) {
+            if ($filter_zombie && $t->count == 0) {
                 $candidates[] = [
                     'id'          => $t->term_id,
                     'name'        => $t->name,
                     'slug'        => $t->slug,
                     'count'       => $t->count,
+                    'has_copy'    => $has_copywriting,
                     'word_count'  => $word_count,
                     'reason_type' => 'zombie',
                     'reason_text' => 'Zombie Tag (0 Post) - Halaman kosong thin-content berisiko de-index.',
@@ -938,28 +954,30 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
                 continue;
             }
 
-            // Kriteria 2: Terlalu Panjang / Long-Tail Sentence (> 3 kata)
-            if ($word_count > 3) {
+            // Kriteria 2: Terlalu Panjang / Long-Tail Sentence (> max_words_thresh)
+            if ($filter_longtail && $word_count > $max_words_thresh) {
                 $candidates[] = [
                     'id'          => $t->term_id,
                     'name'        => $t->name,
                     'slug'        => $t->slug,
                     'count'       => $t->count,
+                    'has_copy'    => $has_copywriting,
                     'word_count'  => $word_count,
                     'reason_type' => 'longtail',
-                    'reason_text' => "Long-Tail Spam ({$word_count} kata) - Format kalimat panjang harusnya judul artikel, bukan tag.",
+                    'reason_text' => "Long-Tail Spam ({$word_count} kata > {$max_words_thresh} kata) - Format kalimat panjang harusnya jadi judul artikel, bukan tag.",
                     'action'      => 'delete',
                 ];
                 continue;
             }
 
             // Kriteria 3: Karakter Spam / Rusak / Angka Acak
-            if (preg_match('/[<>{}\[\]\^\*\$#@!~%]/', $t->name) || is_numeric($t->name)) {
+            if ($filter_garbage && (preg_match('/[<>{}\[\]\^\*\$#@!~%]/', $t->name) || is_numeric($t->name))) {
                 $candidates[] = [
                     'id'          => $t->term_id,
                     'name'        => $t->name,
                     'slug'        => $t->slug,
                     'count'       => $t->count,
+                    'has_copy'    => $has_copywriting,
                     'word_count'  => $word_count,
                     'reason_type' => 'garbage',
                     'reason_text' => 'Karakter Rusak / Simbol Acak - Terindikasi tag spam / error scraping.',
@@ -968,13 +986,16 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
                 continue;
             }
 
-            // Tag pendek yang lolos rules awal dikumpulkan untuk dicek relevansi topiknya oleh AI
-            $unclear_for_ai[] = [
-                'id'    => $t->term_id,
-                'name'  => $t->name,
-                'slug'  => $t->slug,
-                'count' => $t->count,
-            ];
+            // Tag pendek yang lolos rules awal dikumpulkan untuk dicek relevansi topiknya oleh AI (hanya jika opsi relevansi aktif)
+            if ($filter_niche) {
+                $unclear_for_ai[] = [
+                    'id'       => $t->term_id,
+                    'name'     => $t->name,
+                    'slug'     => $t->slug,
+                    'count'    => $t->count,
+                    'has_copy' => $has_copywriting,
+                ];
+            }
         }
 
         // Tahap 2: AI Evaluation untuk Relevansi Niche & Topical Authority
@@ -1029,6 +1050,7 @@ Jika semua tag di daftar layak dipertahankan, balas dengan array kosong: []";
                                 'name'        => $u['name'],
                                 'slug'        => $u['slug'],
                                 'count'       => $u['count'],
+                                'has_copy'    => $u['has_copy'] ?? false,
                                 'word_count'  => count(explode(' ', $u['name'])),
                                 'reason_type' => 'out_of_niche',
                                 'reason_text' => 'AI Review: ' . $ai_bad_map[$u['id']],

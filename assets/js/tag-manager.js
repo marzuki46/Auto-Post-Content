@@ -126,6 +126,7 @@ jQuery(document).ready(function ($) {
     // -------------------------------------------------------------
     let allCandidates = [];
     let isAuditing = false;
+    let candidateActiveTab = 'all';
 
     $('#btn-start-tag-audit').on('click', function (e) {
         e.preventDefault();
@@ -133,6 +134,19 @@ jQuery(document).ready(function ($) {
         const originalText = $btn.html();
         isAuditing = true;
         $btn.prop('disabled', true).html('<span class="apcai-spinner"></span> Sedang Menganalisis Tag...');
+
+        const critZombie   = $('#audit_crit_zombie').is(':checked') ? 1 : 0;
+        const critLongtail = $('#audit_crit_longtail').is(':checked') ? 1 : 0;
+        const critNiche    = $('#audit_crit_niche').is(':checked') ? 1 : 0;
+        const critGarbage  = $('#audit_crit_garbage').is(':checked') ? 1 : 0;
+        const protectCopy  = $('#audit_protect_copy').is(':checked') ? 1 : 0;
+        const maxWords     = $('#audit_max_words').val() || 3;
+
+        if (!critZombie && !critLongtail && !critNiche && !critGarbage) {
+            alert('Pilih minimal satu kriteria audit.');
+            $btn.prop('disabled', false).html(originalText);
+            return;
+        }
 
         allCandidates = [];
         $('#tag-candidates-body').empty();
@@ -150,6 +164,12 @@ jQuery(document).ready(function ($) {
                     action: 'apcai_analyze_tags_with_ai',
                     nonce: nonce,
                     offset: offset,
+                    crit_zombie: critZombie,
+                    crit_longtail: critLongtail,
+                    crit_niche: critNiche,
+                    crit_garbage: critGarbage,
+                    protect_copy: protectCopy,
+                    max_words: maxWords,
                 },
                 success: function (res) {
                     if (!res.success || !res.data) {
@@ -176,14 +196,14 @@ jQuery(document).ready(function ($) {
                         $btn.prop('disabled', false).html(originalText);
                         $('#tag-audit-progress-bar').css('width', '100%');
                         $('#tag-audit-percent-text').text('100%');
-                        $('#tag-audit-status-text').html('<span style="color:#10b981;font-weight:700;">✅ Analisa AI Selesai! Ditemukan ' + allCandidates.length + ' tag yang berisiko merusak SEO.</span>');
+                        $('#tag-audit-status-text').html('<span style="color:#10b981;font-weight:700;">✅ Analisa Selesai! Ditemukan ' + allCandidates.length + ' tag yang berisiko merusak SEO.</span>');
 
                         renderCandidatesTable();
                     } else {
                         // Jeda sejenak untuk rate limit AI
                         setTimeout(function () {
                             runAuditBatch(data.offset);
-                        }, 500);
+                        }, 400);
                     }
                 },
                 error: function () {
@@ -201,9 +221,24 @@ jQuery(document).ready(function ($) {
         $body.empty();
         $('#candidate-count-text').text(allCandidates.length);
 
+        // Update Counter Sub-Tabs
+        let countZombie = 0, countLong = 0, countNiche = 0, countGarb = 0;
+        $.each(allCandidates, function (_, c) {
+            if (c.reason_type === 'zombie') countZombie++;
+            else if (c.reason_type === 'longtail') countLong++;
+            else if (c.reason_type === 'out_of_niche') countNiche++;
+            else if (c.reason_type === 'garbage') countGarb++;
+        });
+
+        $('#count-tab-all').text(allCandidates.length);
+        $('#count-tab-zombie').text(countZombie);
+        $('#count-tab-longtail').text(countLong);
+        $('#count-tab-niche').text(countNiche);
+        $('#count-tab-garbage').text(countGarb);
+
         if (allCandidates.length === 0) {
             $('#tag-candidates-container').slideDown(200);
-            $body.html('<tr><td colspan="6" style="text-align:center;padding:30px;color:#10b981;font-weight:600;">🎉 Hebat! Seluruh tag di web Anda sehat, relevan dengan niche, dan tidak ada tag spam berlebih.</td></tr>');
+            $body.html('<tr><td colspan="7" style="text-align:center;padding:30px;color:#10b981;font-weight:600;">🎉 Hebat! Seluruh tag di web Anda sehat dan sesuai dengan filter yang dipilih.</td></tr>');
             $('#btn-delete-selected-candidates').hide();
             return;
         }
@@ -211,12 +246,17 @@ jQuery(document).ready(function ($) {
         $('#btn-delete-selected-candidates').show();
         $.each(allCandidates, function (idx, c) {
             const badgeColor = (c.reason_type === 'zombie') ? '#94a3b8' : ((c.reason_type === 'longtail') ? '#f59e0b' : '#ef4444');
+            const copyBadge = c.has_copy 
+                ? '<span class="apcai-badge apcai-badge-green" style="font-size:10px;">✅ Ada Copywriting</span>' 
+                : '<span class="apcai-badge" style="background:#f1f5f9;color:#94a3b8;font-size:10px;">Belum Ada</span>';
+
             const rowHtml =
-                '<tr id="candidate-row-' + c.id + '">' +
+                '<tr class="candidate-row" data-type="' + c.reason_type + '" id="candidate-row-' + c.id + '">' +
                     '<td style="text-align:center;"><input type="checkbox" class="candidate-check" value="' + c.id + '" checked></td>' +
                     '<td><strong style="color:#0f172a;">' + c.name + '</strong><div style="font-size:11px;color:#64748b;">slug: <code>' + c.slug + '</code></div></td>' +
                     '<td><span class="apcai-badge" style="background:#f1f5f9;color:#334155;">' + c.word_count + ' kata</span></td>' +
                     '<td><span class="apcai-badge apcai-badge-blue">' + c.count + ' Post</span></td>' +
+                    '<td>' + copyBadge + '</td>' +
                     '<td><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:' + badgeColor + '15;color:' + badgeColor + ';font-weight:600;border:1px solid ' + badgeColor + '40;">' + c.reason_text + '</span></td>' +
                     '<td style="text-align:right;">' +
                         '<button type="button" class="btn-delete-single-candidate apcai-btn apcai-btn-danger" data-id="' + c.id + '" data-name="' + c.name + '" style="padding:2px 8px;font-size:11px;">🗑️ Hapus</button>' +
@@ -225,7 +265,25 @@ jQuery(document).ready(function ($) {
             $body.append(rowHtml);
         });
 
+        applyCandidateTabFilter();
         $('#tag-candidates-container').slideDown(200);
+    }
+
+    // Filter Candidate Sub-Tabs (Zombie, Long-Tail, Niche, dll)
+    $('.btn-filter-candidate').on('click', function () {
+        $('.btn-filter-candidate').removeClass('active');
+        $(this).addClass('active');
+        candidateActiveTab = $(this).data('type') || 'all';
+        applyCandidateTabFilter();
+    });
+
+    function applyCandidateTabFilter() {
+        if (candidateActiveTab === 'all') {
+            $('.candidate-row').show();
+        } else {
+            $('.candidate-row').hide();
+            $('.candidate-row[data-type="' + candidateActiveTab + '"]').show();
+        }
     }
 
     // Master Checkbox Toggle

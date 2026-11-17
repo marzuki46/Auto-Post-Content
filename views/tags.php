@@ -72,19 +72,75 @@ $tag_schedule_enabled = !empty($settings['tag_schedule_enabled']);
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
             <div>
                 <h2 style="margin:0;color:#0f172a;display:flex;align-items:center;gap:8px;">
-                    🧹 <?php echo esc_html(APCAI_I18n::t('AI Tag Health Auditor & Cleaner (Max 400 Tag Policy)', 'AI Tag Health Auditor & Cleaner (Max 400 Tag Policy)')); ?>
+                    🧹 <?php echo esc_html(APCAI_I18n::t('AI Tag Health Auditor & Cleaner (Filter Multikriteria)', 'AI Tag Health Auditor & Cleaner (Multi-Criteria Filter)')); ?>
                 </h2>
                 <p style="color:var(--apcai-slate-500);font-size:13px;margin:4px 0 0 0;">
                     <?php echo esc_html(APCAI_I18n::t(
-                        'Pindai seluruh tag di web Anda. AI mengevaluasi kesesuaian profil bisnis/niche Anda, mendeteksi tag 0 post (zombie), tag long-tail terlalu panjang (>3 kata), serta tag sampah/rusak. Tag yang dihapus otomatis dialihkan (301 Redirect) ke Homepage agar reputasi SEO tetap aman.',
-                        'Scan all tags across your site. AI analyzes relevance with your website profile, catches zero-post zombie tags, long-tail sentence spam (>3 words), and broken tags. Deleted tags are permanently 301-redirected to Homepage.'
+                        'Pilih kombinasi kriteria di bawah untuk menentukan tag apa saja yang layak diaudit. Tag yang sudah Anda buatkan konten copywriting dapat diproteksi agar tidak terhapus. Tag yang dihapus otomatis dialihkan 301 ke Homepage.',
+                        'Select criteria below to determine which tags qualify for audit. Tags with existing copywriting can be protected. Deleted tags are permanently 301-redirected to Homepage.'
                     )); ?>
                 </p>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <button type="button" id="btn-start-tag-audit" class="apcai-btn apcai-btn-primary" style="padding:10px 20px;font-size:13px;background:#ef4444;">
-                    🔍 <?php echo esc_html(APCAI_I18n::t('Mulai Analisa AI & Audit Tag', 'Run AI Tag Health Audit')); ?>
+                <button type="button" id="btn-start-tag-audit" class="apcai-btn apcai-btn-primary" style="padding:10px 22px;font-size:13px;background:#ef4444;">
+                    🔍 <?php echo esc_html(APCAI_I18n::t('Pindai Sesuai Filter Terpilih', 'Run Audit with Selected Filters')); ?>
                 </button>
+            </div>
+        </div>
+
+        <!-- Filter Criteria Settings Checkboxes -->
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin-top:10px;">
+            <div style="font-weight:700;font-size:13px;color:#0f172a;margin-bottom:10px;">
+                ⚙️ <?php echo esc_html(APCAI_I18n::t('Kriteria & Perlindungan Tag:', 'Audit Criteria & Protection:')); ?>
+            </div>
+            <div style="display:grid;grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));gap:12px;">
+                <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#1e293b;cursor:pointer;background:#fff;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;">
+                    <input type="checkbox" id="audit_crit_zombie" value="1" checked style="margin-top:2px;">
+                    <div>
+                        <strong>1. Tag Zombie (0 Artikel)</strong>
+                        <div style="font-size:11px;color:#64748b;margin-top:2px;">Tag kosong tanpa post sama sekali (thin content).</div>
+                    </div>
+                </label>
+
+                <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#1e293b;cursor:pointer;background:#fff;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;">
+                    <input type="checkbox" id="audit_crit_longtail" value="1" checked style="margin-top:2px;">
+                    <div>
+                        <strong>2. Tag Terlalu Panjang (Long-Tail)</strong>
+                        <div style="font-size:11px;color:#64748b;margin-top:2px;">
+                            Lebih dari: 
+                            <select id="audit_max_words" style="padding:2px 6px;font-size:11px;border-radius:4px;border:1px solid #cbd5e1;">
+                                <option value="3" selected>&gt; 3 kata</option>
+                                <option value="4">&gt; 4 kata</option>
+                                <option value="5">&gt; 5 kata</option>
+                            </select> (mirip judul artikel)
+                        </div>
+                    </div>
+                </label>
+
+                <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#1e293b;cursor:pointer;background:#fff;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;">
+                    <input type="checkbox" id="audit_crit_niche" value="1" checked style="margin-top:2px;">
+                    <div>
+                        <strong>3. Relevansi Niche (AI Analyzed)</strong>
+                        <div style="font-size:11px;color:#64748b;margin-top:2px;">AI mengevaluasi kecocokan tag dengan profil web.</div>
+                    </div>
+                </label>
+
+                <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#1e293b;cursor:pointer;background:#fff;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;">
+                    <input type="checkbox" id="audit_crit_garbage" value="1" checked style="margin-top:2px;">
+                    <div>
+                        <strong>4. Karakter Rusak & Simbol Acak</strong>
+                        <div style="font-size:11px;color:#64748b;margin-top:2px;">Tag mengandung simbol khusus atau angka acak.</div>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Proteksi Khusus Tag Berisi Konten -->
+            <div style="margin-top:12px;padding-top:10px;border-top:1px dashed #cbd5e1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#065f46;font-weight:600;cursor:pointer;background:#ecfdf5;padding:8px 14px;border:1px solid #a7f3d0;border-radius:6px;">
+                    <input type="checkbox" id="audit_protect_copy" value="1" checked style="margin-top:1px;">
+                    🛡️ <?php echo esc_html(APCAI_I18n::t('PROTEKSI: Jangan Masukkan Tag yang Sudah Dibuatkan Konten Copywriting', 'PROTECTION: Never delete tags with existing copywriting')); ?>
+                </label>
+                <span style="font-size:12px;color:#64748b;">Tag copywriting yang sudah aktif akan otomatis dilewati & aman 100%.</span>
             </div>
         </div>
 
@@ -121,6 +177,18 @@ $tag_schedule_enabled = !empty($settings['tag_schedule_enabled']);
             </div>
 
             <!-- Table Candidates -->
+            <div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <div style="display:flex;gap:6px;" id="candidate-filter-tabs">
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-candidate active" data-type="all" style="padding:3px 10px;font-size:11px;">Semua (<span id="count-tab-all">0</span>)</button>
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-candidate" data-type="zombie" style="padding:3px 10px;font-size:11px;">Zombie (0 Post) (<span id="count-tab-zombie">0</span>)</button>
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-candidate" data-type="longtail" style="padding:3px 10px;font-size:11px;">Long-Tail (<span id="count-tab-longtail">0</span>)</button>
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-candidate" data-type="out_of_niche" style="padding:3px 10px;font-size:11px;">Out of Niche (<span id="count-tab-niche">0</span>)</button>
+                    <button type="button" class="apcai-btn apcai-btn-secondary btn-filter-candidate" data-type="garbage" style="padding:3px 10px;font-size:11px;">Karakter Rusak (<span id="count-tab-garbage">0</span>)</button>
+                </div>
+                <div style="font-size:11px;color:#64748b;">
+                    Klik nama tag untuk melihat halaman tag di WordPress.
+                </div>
+            </div>
             <div style="max-height:420px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;background:#fff;">
                 <table class="apcai-table" style="width:100%;margin:0;">
                     <thead>
@@ -129,6 +197,7 @@ $tag_schedule_enabled = !empty($settings['tag_schedule_enabled']);
                             <th>Nama Tag</th>
                             <th>Panjang Kata</th>
                             <th>Jumlah Artikel</th>
+                            <th>Status Copywriting</th>
                             <th>Alasan Rekomendasi Hapus</th>
                             <th style="text-align:right;">Aksi</th>
                         </tr>
