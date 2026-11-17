@@ -49,6 +49,69 @@ class APCAI_Tag_Manager {
                 'nonce'    => wp_create_nonce('apcai_tag_nonce'),
             ]);
         }
+
+        // Yoast SEO Content Bridge untuk Taxonomy Term (Register Yoast Plugin Filter)
+        if ($is_tag_screen) {
+            add_action('admin_footer', [__CLASS__, 'render_yoast_seo_term_script_bridge'], 99);
+        }
+    }
+
+    /**
+     * JavaScript Bridge: Daftarkan plugin modifikasi konten langsung ke Yoast SEO (YoastSEO.app.registerPlugin)
+     * Ini menjamin teks di textarea _apcai_tag_copywriting langsung dibaca mesin Yoast real-time!
+     */
+    public static function render_yoast_seo_term_script_bridge() {
+        ?>
+        <script type="text/javascript">
+        (function() {
+            function initYoastTagBridge() {
+                if (typeof YoastSEO === 'undefined' || !YoastSEO.app || !YoastSEO.app.registerPlugin) {
+                    setTimeout(initYoastTagBridge, 300);
+                    return;
+                }
+
+                var APC_Yoast_Plugin = function() {
+                    YoastSEO.app.registerPlugin('apcai_tag_copywriting_plugin', { status: 'ready' });
+                    YoastSEO.app.registerModification('content', function(data) {
+                        // Ambil konten dari textarea AI Tag Copywriting Hub
+                        var apcContent = jQuery('#apcai_tag_copywriting').val();
+                        if (apcContent && apcContent.trim().length > 0) {
+                            return apcContent;
+                        }
+                        // Fallback ke textarea native description
+                        var nativeDesc = jQuery('#description').val();
+                        if (nativeDesc && nativeDesc.trim().length > 0) {
+                            return nativeDesc;
+                        }
+                        return data;
+                    }, 'apcai_tag_copywriting_plugin', 5);
+                };
+
+                new APC_Yoast_Plugin();
+            }
+
+            if (document.readyState === 'complete') {
+                initYoastTagBridge();
+            } else {
+                window.addEventListener('load', initYoastTagBridge);
+            }
+
+            // Sync dua arah saat pengguna mengetik di textarea AI Tag Copywriting
+            jQuery(document).on('input change', '#apcai_tag_copywriting', function() {
+                var val = jQuery(this).val();
+                var $desc = jQuery('#description');
+                if ($desc.length && $desc.val() !== val) {
+                    $desc.val(val).trigger('input').trigger('change');
+                }
+                if (typeof YoastSEO !== 'undefined' && YoastSEO.app && typeof YoastSEO.app.pluginReloaded === 'function') {
+                    try {
+                        YoastSEO.app.pluginReloaded('apcai_tag_copywriting_plugin');
+                    } catch (e) {}
+                }
+            });
+        })();
+        </script>
+        <?php
     }
 
     /**

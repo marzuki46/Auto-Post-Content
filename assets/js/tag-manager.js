@@ -651,18 +651,36 @@ jQuery(document).ready(function ($) {
                 if (res.success && res.data) {
                     $('#apcai_tag_copywriting').val(res.data.content);
                     
-                    // Update juga textarea 'description' native WordPress jika ada di halaman
+                    // 1. Update ke field textarea asli WordPress 'description'
+                    let cleanText = res.data.content;
                     const $desc = $('#description');
                     if ($desc.length) {
-                        $desc.val(res.data.content);
-                        // Trigger event input & change agar library Yoast SEO realtime analyzer membaca konten langsung
-                        $desc.trigger('input').trigger('change');
+                        $desc.val(cleanText).trigger('input').trigger('change');
                     }
 
-                    // Update input focus keyphrase Yoast di layar jika ada
+                    // 2. Jika WordPress menggunakan TinyMCE / WP Editor (Visual Tab) untuk description
+                    if (typeof tinyMCE !== 'undefined' && tinyMCE.get('description')) {
+                        tinyMCE.get('description').setContent(cleanText);
+                        tinyMCE.get('description').fire('change');
+                        tinyMCE.get('description').fire('input');
+                    }
+
+                    // 3. Set Focus Keyphrase Yoast SEO di form jika kosong
                     const $yoastInput = $('input[name*="focuskw"], #yoast_wpseo_focuskw, input#focus-keyword-input-metabox');
-                    if ($yoastInput.length && !$yoastInput.val()) {
+                    if ($yoastInput.length) {
                         $yoastInput.val(tagName).trigger('input').trigger('change');
+                    }
+
+                    // 4. Integrasi Yoast SEO Plugin Mod Plugin JS Bridge (Yoast.App / YoastSEO)
+                    if (typeof YoastSEO !== 'undefined' && YoastSEO.app && YoastSEO.app.pluginReloaded) {
+                        try {
+                            YoastSEO.app.pluginReloaded();
+                        } catch (err) {}
+                    }
+                    if (window.YoastSEO && window.YoastSEO.app && typeof window.YoastSEO.app.refresh === 'function') {
+                        try {
+                            window.YoastSEO.app.refresh();
+                        } catch (err) {}
                     }
 
                     $status.html('<span style="color:#10b981;font-weight:600;">✅ Selesai! ' + res.data.word_count + ' kata tersimpan ke Deskripsi WordPress & Yoast SEO.</span>');
