@@ -115,6 +115,11 @@ class APCAI_Tag_Manager {
     }
 
     /**
+     * Ambang batas kata minimum agar konten tag dianggap valid (bukan sekadar nama tag / deskripsi bawaan 1-3 kata)
+     */
+    const MIN_CONTENT_WORDS = 50;
+
+    /**
      * Ambil konten tag efektif: prioritaskan _apcai_tag_copywriting, fallback ke term description native
      */
     public static function get_effective_tag_content(int $term_id): string {
@@ -127,6 +132,13 @@ class APCAI_Tag_Manager {
             return (string)$term->description;
         }
         return '';
+    }
+
+    /**
+     * Cek apakah konten tag sudah memenuhi standar minimum kata
+     */
+    public static function is_valid_content(string $content): bool {
+        return str_word_count(strip_tags($content)) >= self::MIN_CONTENT_WORDS;
     }
 
     /**
@@ -146,7 +158,7 @@ class APCAI_Tag_Manager {
         $filled = 0;
         foreach ($tags as $t) {
             $content = self::get_effective_tag_content($t->term_id);
-            if (!empty(trim($content))) {
+            if (self::is_valid_content($content)) {
                 $filled++;
             }
         }
@@ -159,7 +171,7 @@ class APCAI_Tag_Manager {
     }
 
     /**
-     * Ambil daftar tag yang belum ada kontennya
+     * Ambil daftar tag yang belum ada kontennya atau kurang dari ambang batas kata
      */
     public static function get_empty_tags(): array {
         $tags = get_terms([
@@ -171,7 +183,7 @@ class APCAI_Tag_Manager {
         if (!empty($tags) && !is_wp_error($tags)) {
             foreach ($tags as $t) {
                 $content = self::get_effective_tag_content($t->term_id);
-                if (empty(trim($content))) {
+                if (!self::is_valid_content($content)) {
                     $empty[] = [
                         'id'    => $t->term_id,
                         'name'  => $t->name,
@@ -193,9 +205,10 @@ class APCAI_Tag_Manager {
 
     public static function render_tag_column($content, $column_name, $term_id) {
         if ($column_name === 'apcai_copywriting') {
-            $has_content = self::get_effective_tag_content($term_id);
-            if (!empty($has_content)) {
-                $word_count = str_word_count(strip_tags($has_content));
+            $effective_content = self::get_effective_tag_content($term_id);
+            $word_count = !empty($effective_content) ? str_word_count(strip_tags($effective_content)) : 0;
+
+            if ($word_count >= self::MIN_CONTENT_WORDS) {
                 $lang = strtoupper(get_term_meta($term_id, '_apcai_tag_lang', true) ?: 'ID');
                 $funnel = strtoupper(get_term_meta($term_id, '_apcai_tag_funnel', true) ?: 'MOFU');
                 $storage = get_term_meta($term_id, '_apcai_tag_storage_target', true) ?: 'both';
@@ -205,6 +218,8 @@ class APCAI_Tag_Manager {
                     default   => 'Dual Sync',
                 };
                 return '<span class="apcai-badge apcai-badge-green">Aktif (' . $word_count . ' kata | ' . $loc_label . ')</span>';
+            } elseif ($word_count > 0) {
+                return '<span class="apcai-badge apcai-badge-amber">⚠️ Kurang Panjang (' . $word_count . ' kata)</span>';
             }
             return '<span class="apcai-badge" style="background:#f1f5f9;color:#94a3b8;">Belum Ada</span>';
         }
@@ -1009,8 +1024,8 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         if (!empty($terms) && !is_wp_error($terms)) {
             foreach ($terms as $t) {
                 $content = self::get_effective_tag_content($t->term_id);
-                $has_content = !empty(trim($content));
-                $words = $has_content ? str_word_count(strip_tags($content)) : 0;
+                $words = !empty($content) ? str_word_count(strip_tags($content)) : 0;
+                $has_content = ($words >= self::MIN_CONTENT_WORDS);
                 $t_lang = strtoupper(get_term_meta($t->term_id, '_apcai_tag_lang', true) ?: 'ID');
                 $t_funnel = strtoupper(get_term_meta($t->term_id, '_apcai_tag_funnel', true) ?: 'MOFU');
                 $yoast_kw = (class_exists('APCAI_SEO_Helper') ? APCAI_SEO_Helper::get_term_focus_keyword($t->term_id, 'post_tag') : '') ?: $t->name;

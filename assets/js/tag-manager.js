@@ -53,9 +53,14 @@ jQuery(document).ready(function ($) {
 
                 $tbody.empty();
                 $.each(data.items, function (_, t) {
-                    const statusBadge = t.has_content
-                        ? '<span class="apcai-badge apcai-badge-green">✅ Aktif (' + t.words + ' kata • ' + t.lang + ' • ' + t.funnel + ')</span>'
-                        : '<span class="apcai-badge apcai-badge-amber">⚠️ Belum Ada Konten</span>';
+                    let statusBadge = '';
+                    if (t.has_content) {
+                        statusBadge = '<span class="apcai-badge apcai-badge-green">✅ Aktif (' + t.words + ' kata • ' + t.lang + ' • ' + t.funnel + ')</span>';
+                    } else if (t.words > 0) {
+                        statusBadge = '<span class="apcai-badge apcai-badge-amber">⚠️ Kurang Panjang (' + t.words + ' kata)</span>';
+                    } else {
+                        statusBadge = '<span class="apcai-badge" style="background:#f1f5f9;color:#94a3b8;">⚠️ Belum Ada Konten</span>';
+                    }
 
                     const viewBtn = t.view_url
                         ? '<a href="' + t.view_url + '" target="_blank" class="apcai-btn apcai-btn-secondary" style="padding:4px 8px;font-size:11px;" title="Lihat di Web">👁️</a>'
