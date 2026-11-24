@@ -8,6 +8,10 @@ class APCAI_Tag_Manager {
         add_action('loop_end', [__CLASS__, 'render_tag_content_below_posts']);
         add_shortcode('apcai_tag_content', [__CLASS__, 'shortcode_tag_content']);
 
+        // Izinkan HTML tags lengkap di term description WordPress (H2-H4, p, table, ul, li, strong, dll)
+        remove_filter('pre_term_description', 'wp_filter_kses');
+        remove_filter('term_description', 'wp_kses_data');
+
         // Frontend 301 Redirect untuk Tag yang telah dihapus
         add_action('template_redirect', [__CLASS__, 'handle_deleted_tag_redirect']);
 
@@ -118,6 +122,17 @@ class APCAI_Tag_Manager {
      * Ambang batas kata minimum agar konten tag dianggap valid (bukan sekadar nama tag / deskripsi bawaan 1-3 kata)
      */
     const MIN_CONTENT_WORDS = 50;
+
+    /**
+     * Update deskripsi term native WordPress dengan bypass filter wp_filter_kses agar tag HTML (h2, p, table, ul, strong) tidak disunat
+     */
+    public static function update_term_description_safely(int $term_id, string $content): void {
+        remove_filter('pre_term_description', 'wp_filter_kses');
+        wp_update_term($term_id, 'post_tag', [
+            'description' => $content,
+        ]);
+        add_filter('pre_term_description', 'wp_filter_kses');
+    }
 
     /**
      * Ambil konten tag efektif: prioritaskan _apcai_tag_copywriting, fallback ke term description native
@@ -323,9 +338,7 @@ class APCAI_Tag_Manager {
             }
 
             if ($storage_target === 'default' || $storage_target === 'both') {
-                wp_update_term($term_id, 'post_tag', [
-                    'description' => $content,
-                ]);
+                self::update_term_description_safely($term_id, $content);
             }
         }
         if (isset($_POST['apcai_tag_lang'])) {
@@ -421,9 +434,10 @@ ATURAN STRUKTUR & SEO HEADING PALING KETAT:
 1. ATURAN 1 H1 (ABSOLUTE RULE):
    DILARANG KERAS menggunakan tag <h1> atau # Heading 1! Halaman arsip tag WordPress SUDAH memiliki tag <h1> bawaan dari tema untuk nama tag.
    Semua heading wajib dimulai dari:
-   - ## (H2) untuk judul bagian utama.
-   - ### (H3) untuk sub-bagian penjelasan atau poin pendukung.
-   - #### (H4) untuk FAQ (Pertanyaan Umum) atau detail teknis.
+   - ## (H2) untuk judul bagian utama (Wajib gunakan format Markdown ## Nama Judul).
+   - ### (H3) untuk sub-bagian penjelasan atau poin pendukung (Wajib gunakan format Markdown ### Sub Judul).
+   - #### (H4) untuk FAQ (Pertanyaan Umum) atau detail teknis (Wajib gunakan format Markdown #### FAQ).
+   Dilarang keras menulis judul bagian hanya sebagai teks biasa tanpa tanda heading ## atau ###!
 2. ATURAN ANTI-KANIBALISASI & DUPLICATE CONTENT (KRUSIAL):
    - Tag ini adalah HALAMAN HUB / CLUSTER AGREGATOR, BUKAN ARTIKEL TUNGGAL.
    - Jika ada postingan blog dengan judul atau kata kunci serupa, jangan menulis ulang artikel tersebut!
@@ -445,7 +459,7 @@ ATURAN STRUKTUR & SEO HEADING PALING KETAT:
    Sertakan link kontekstual ke Brand Resmi [{$site_name}]({$site_url}) dengan ajakan aksi (Call To Action) yang elegan di akhir tulisan.
 {$lang_strict_rule}
 
-Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
+Format Output WAJIB Markdown murni dengan struktur heading ## H2, ### H3, paragraf terpisah dua baris baru, bullet points, dan tabel tanpa bungkus code block ```.";
 
         $user_prompt = "TAG / TOPIK: \"{$tag_name}\"\nNICHE: {$niche}\nBRAND: {$site_name}\nBRAND VOICE: {$brand_voice}\n" .
             $existing_posts_note .
@@ -463,8 +477,13 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         $md = preg_replace('/^```(?:markdown|html)?\s*/i', '', trim($raw));
         $md = preg_replace('/\s*```$/', '', $md);
 
-        // Konversi Markdown ke HTML
-        $html = APCAI_Generator::markdown_to_html($md);
+        // Jika AI sudah mengeluarkan HTML mentah, jangan konversi ulang agar tidak rusak
+        if (preg_match('/<(?:h[2-6]|p|table|ul|ol)\b/i', $md)) {
+            $html = $md;
+        } else {
+            // Konversi Markdown ke HTML
+            $html = APCAI_Generator::markdown_to_html($md);
+        }
 
         // Jamin 100% tidak ada tag <h1> di output
         $html = self::enforce_single_h1($html);
@@ -585,9 +604,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
             }
 
             if ($storage === 'default' || $storage === 'both') {
-                wp_update_term($tag_id, 'post_tag', [
-                    'description' => $res,
-                ]);
+                self::update_term_description_safely($tag_id, $res);
             }
 
             // Auto input frasa kunci utama Yoast & Rank Math dengan resolusi anti-kanibalisasi
@@ -666,9 +683,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         }
 
         if ($storage === 'default' || $storage === 'both') {
-            wp_update_term($tag_id, 'post_tag', [
-                'description' => $res,
-            ]);
+            self::update_term_description_safely($tag_id, $res);
         }
 
         // Auto input ke frasa kunci Yoast SEO & Rank Math dengan resolusi anti-kanibalisasi
@@ -761,9 +776,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         }
 
         if ($storage === 'default' || $storage === 'both') {
-            wp_update_term($tag_id, 'post_tag', [
-                'description' => $content,
-            ]);
+            self::update_term_description_safely($tag_id, $content);
         }
 
         $term = get_term($tag_id, 'post_tag');
@@ -825,9 +838,7 @@ Format Output WAJIB Markdown murni tanpa bungkus code block ```.";
         }
 
         if ($storage === 'default' || $storage === 'both') {
-            wp_update_term($target['id'], 'post_tag', [
-                'description' => $res,
-            ]);
+            self::update_term_description_safely($target['id'], $res);
         }
 
         // Auto input ke frasa kunci Yoast SEO & Rank Math dengan resolusi anti-kanibalisasi
