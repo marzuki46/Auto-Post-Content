@@ -8,6 +8,10 @@ class APCAI_Tag_Manager {
         add_action('loop_end', [__CLASS__, 'render_tag_content_below_posts']);
         add_shortcode('apcai_tag_content', [__CLASS__, 'shortcode_tag_content']);
 
+        // Filter deskripsi arsip tag native agar selalu mengembalikan konten terformat lengkap jika tema memanggil tag_description() / the_archive_description()
+        add_filter('tag_description', [__CLASS__, 'filter_tag_archive_description'], 20, 2);
+        add_filter('get_the_archive_description', [__CLASS__, 'filter_the_archive_description'], 20, 1);
+
         // Izinkan HTML tags lengkap di term description WordPress (H2-H4, p, table, ul, li, strong, dll)
         remove_filter('pre_term_description', 'wp_filter_kses');
         remove_filter('term_description', 'wp_kses_data');
@@ -496,6 +500,44 @@ Format Output WAJIB Markdown murni dengan struktur heading ## H2, ### H3, paragr
      */
     public static function enforce_single_h1(string $html): string {
         return preg_replace('/<(\/?)h1\b([^>]*)>/i', '<$1h2$2>', $html);
+    }
+
+    /**
+     * Filter the_archive_description agar tema yang merender deskripsi tag native menampilkan konten copywriting lengkap
+     */
+    public static function filter_the_archive_description($description) {
+        if (!is_tag() || is_admin()) {
+            return $description;
+        }
+        $term_id = get_queried_object_id();
+        if (!$term_id) {
+            return $description;
+        }
+        $content = self::get_effective_tag_content($term_id);
+        if (!empty($content)) {
+            return self::enforce_single_h1($content);
+        }
+        return $description;
+    }
+
+    /**
+     * Filter tag_description agar tema atau plugin SEO yang memanggil tag_description() mendapatkan konten lengkap
+     */
+    public static function filter_tag_archive_description($description, $term_id = 0) {
+        if (is_admin()) {
+            return $description;
+        }
+        if (!$term_id) {
+            $term_id = get_queried_object_id();
+        }
+        if (!$term_id) {
+            return $description;
+        }
+        $content = self::get_effective_tag_content((int)$term_id);
+        if (!empty($content)) {
+            return self::enforce_single_h1($content);
+        }
+        return $description;
     }
 
     /**
