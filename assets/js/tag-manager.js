@@ -387,11 +387,12 @@ jQuery(document).ready(function ($) {
     });
 
     // Toggle Tag Schedule (Background Cron)
-    $('#toggle_tag_schedule, #tag_schedule_daily_count, #tag_schedule_execution_mode').on('change', function () {
+    $('#toggle_tag_schedule, #tag_schedule_daily_count, #tag_schedule_execution_mode, #bulk_tag_storage').on('change', function () {
         const isChecked = $('#toggle_tag_schedule').is(':checked') ? 1 : 0;
         const lang       = $('#bulk_tag_lang').val() || 'id';
         const length     = $('#bulk_tag_length').val() || 'medium';
         const funnel     = $('#bulk_tag_funnel').val() || 'mofu';
+        const storage    = $('#bulk_tag_storage').val() || 'both';
         const dailyCount = $('#tag_schedule_daily_count').val() || 3;
         const execMode   = $('#tag_schedule_execution_mode').val() || 'with_post';
 
@@ -408,6 +409,7 @@ jQuery(document).ready(function ($) {
             lang: lang,
             length: length,
             funnel: funnel,
+            storage_target: storage,
             daily_count: dailyCount,
             exec_mode: execMode,
         }, function (res) {
@@ -498,9 +500,10 @@ jQuery(document).ready(function ($) {
         }
 
         const currentItem = batchQueue.shift();
-        const lang   = $('#bulk_tag_lang').val() || 'id';
-        const length = $('#bulk_tag_length').val() || 'medium';
-        const funnel = $('#bulk_tag_funnel').val() || 'mofu';
+        const lang    = $('#bulk_tag_lang').val() || 'id';
+        const length  = $('#bulk_tag_length').val() || 'medium';
+        const funnel  = $('#bulk_tag_funnel').val() || 'mofu';
+        const storage = $('#bulk_tag_storage').val() || 'both';
 
         const percent = Math.round((completedCount / totalBatchCount) * 100);
         $('#batch-progress-bar').css('width', percent + '%');
@@ -524,6 +527,7 @@ jQuery(document).ready(function ($) {
                 lang: lang,
                 length: length,
                 funnel: funnel,
+                storage_target: storage,
             },
             success: function (res) {
                 completedCount++;
@@ -572,9 +576,10 @@ jQuery(document).ready(function ($) {
         const $btn = $(this);
         const tagId = $btn.data('id');
         const tagName = $btn.data('name');
-        const lang   = $('#bulk_tag_lang').val() || 'id';
-        const length = $('#bulk_tag_length').val() || 'medium';
-        const funnel = $('#bulk_tag_funnel').val() || 'mofu';
+        const lang    = $('#bulk_tag_lang').val() || 'id';
+        const length  = $('#bulk_tag_length').val() || 'medium';
+        const funnel  = $('#bulk_tag_funnel').val() || 'mofu';
+        const storage = $('#bulk_tag_storage').val() || 'both';
 
         const originalText = $btn.html();
         $btn.html('<span class="apcai-spinner"></span>').prop('disabled', true);
@@ -593,6 +598,7 @@ jQuery(document).ready(function ($) {
                 lang: lang,
                 length: length,
                 funnel: funnel,
+                storage_target: storage,
             },
             success: function (res) {
                 $btn.html(originalText).prop('disabled', false);
@@ -626,9 +632,10 @@ jQuery(document).ready(function ($) {
             return;
         }
 
-        const lang   = $('#apcai_tag_lang').val() || 'id';
-        const length = $('#apcai_tag_length').val() || 'medium';
-        const funnel = $('#apcai_tag_funnel').val() || 'mofu';
+        const lang    = $('#apcai_tag_lang').val() || 'id';
+        const length  = $('#apcai_tag_length').val() || 'medium';
+        const funnel  = $('#apcai_tag_funnel').val() || 'mofu';
+        const storage = $('#apcai_tag_storage_target').val() || 'both';
 
         const originalText = $btn.html();
         $btn.html('<span class="apcai-spinner"></span> Sedang Menyusun Copywriting Tag...').prop('disabled', true);
@@ -645,33 +652,41 @@ jQuery(document).ready(function ($) {
                 lang: lang,
                 length: length,
                 funnel: funnel,
+                storage_target: storage,
             },
             success: function (res) {
                 $btn.html(originalText).prop('disabled', false);
                 if (res.success && res.data) {
-                    $('#apcai_tag_copywriting').val(res.data.content);
+                    const st = res.data.storage_target || storage;
+
+                    // Update textarea AI Hub
+                    if (st === 'hub' || st === 'both') {
+                        $('#apcai_tag_copywriting').val(res.data.content);
+                    } else {
+                        $('#apcai_tag_copywriting').val('');
+                    }
                     
                     // 1. Update ke field textarea asli WordPress 'description'
                     let cleanText = res.data.content;
                     const $desc = $('#description');
-                    if ($desc.length) {
-                        $desc.val(cleanText).trigger('input').trigger('change');
+                    if (st === 'default' || st === 'both') {
+                        if ($desc.length) {
+                            $desc.val(cleanText).trigger('input').trigger('change');
+                        }
+                        if (typeof tinyMCE !== 'undefined' && tinyMCE.get('description')) {
+                            tinyMCE.get('description').setContent(cleanText);
+                            tinyMCE.get('description').fire('change');
+                            tinyMCE.get('description').fire('input');
+                        }
                     }
 
-                    // 2. Jika WordPress menggunakan TinyMCE / WP Editor (Visual Tab) untuk description
-                    if (typeof tinyMCE !== 'undefined' && tinyMCE.get('description')) {
-                        tinyMCE.get('description').setContent(cleanText);
-                        tinyMCE.get('description').fire('change');
-                        tinyMCE.get('description').fire('input');
-                    }
-
-                    // 3. Set Focus Keyphrase Yoast SEO di form jika kosong
+                    // 2. Set Focus Keyphrase Yoast SEO di form jika kosong
                     const $yoastInput = $('input[name*="focuskw"], #yoast_wpseo_focuskw, input#focus-keyword-input-metabox');
                     if ($yoastInput.length) {
                         $yoastInput.val(tagName).trigger('input').trigger('change');
                     }
 
-                    // 4. Integrasi Yoast SEO Plugin Mod Plugin JS Bridge (Yoast.App / YoastSEO)
+                    // 3. Integrasi Yoast SEO Plugin Mod Plugin JS Bridge (Yoast.App / YoastSEO)
                     if (typeof YoastSEO !== 'undefined' && YoastSEO.app && YoastSEO.app.pluginReloaded) {
                         try {
                             YoastSEO.app.pluginReloaded();
@@ -683,7 +698,8 @@ jQuery(document).ready(function ($) {
                         } catch (err) {}
                     }
 
-                    $status.html('<span style="color:#10b981;font-weight:600;">✅ Selesai! ' + res.data.word_count + ' kata tersimpan ke Deskripsi WordPress & Yoast SEO.</span>');
+                    const targetLabel = (st === 'default') ? 'Deskripsi WordPress Saja' : ((st === 'hub') ? 'AI Hub (Bawah Loop) Saja' : 'Dual Sinkron (Deskripsi + AI Hub)');
+                    $status.html('<span style="color:#10b981;font-weight:600;">✅ Selesai! ' + res.data.word_count + ' kata tersimpan ke ' + targetLabel + ' & Yoast SEO terdeteksi.</span>');
                 } else {
                     $status.html('<span style="color:#ef4444;">❌ ' + (res.data || 'Gagal generate copywriting.') + '</span>');
                 }

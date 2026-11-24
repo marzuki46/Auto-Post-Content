@@ -218,7 +218,16 @@ $tag_schedule_enabled = !empty($settings['tag_schedule_enabled']);
             )); ?>
         </p>
 
-        <div style="display:grid;grid-template-columns: 1fr 1fr 1fr;gap:20px;margin-bottom:18px;">
+        <div style="display:grid;grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));gap:16px;margin-bottom:18px;">
+            <div class="apcai-form-group">
+                <label><?php echo esc_html(APCAI_I18n::t('Lokasi Simpan Konten', 'Storage Location')); ?></label>
+                <select id="bulk_tag_storage" class="apcai-select">
+                    <option value="both" <?php selected($settings['tag_default_storage_target'] ?? 'both', 'both'); ?>>🔄 <?php echo esc_html(APCAI_I18n::t('Keduanya (Deskripsi WP + Hub MOFU) [Rekomendasi]', 'Both (WP Description + MOFU Hub) [Recommended]')); ?></option>
+                    <option value="default" <?php selected($settings['tag_default_storage_target'] ?? 'both', 'default'); ?>>📝 <?php echo esc_html(APCAI_I18n::t('Default WordPress Saja (Deskripsi Tag)', 'Default WordPress Only (Tag Description)')); ?></option>
+                    <option value="hub" <?php selected($settings['tag_default_storage_target'] ?? 'both', 'hub'); ?>>✨ <?php echo esc_html(APCAI_I18n::t('AI Tag Copywriting Hub Saja (Silo MOFU)', 'AI Tag Copywriting Hub Only (MOFU Silo)')); ?></option>
+                </select>
+            </div>
+
             <div class="apcai-form-group">
                 <label><?php echo esc_html(APCAI_I18n::t('Bahasa Copywriting Tag', 'Tag Language')); ?></label>
                 <select id="bulk_tag_lang" class="apcai-select">
